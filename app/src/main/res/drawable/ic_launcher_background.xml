@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flat, muted deep slate-blue background for the adaptive icon - a calm, desaturated
+     tone in the spirit of Material You's dynamic tonal palettes. Flat color only. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#3A4750"/>
+</shape>

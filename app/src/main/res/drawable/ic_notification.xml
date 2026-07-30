@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar / notification icon. Rendered by Android using only its alpha channel
+     (always shown as a flat white or system-tinted silhouette), reusing the same pillow
+     mark used everywhere else - large simple shapes with no fine detail to lose at 24dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M38,32
+            L70,32
+            A18,18 0 0 1 88,50
+            L88,58
+            A18,18 0 0 1 70,76
+            L38,76
+            A18,18 0 0 1 20,58
+            L20,50
+            A18,18 0 0 1 38,32 Z
+            M32,48
+            Q54,39 76,48
+            Q54,46 32,48 Z" />
+</vector>
