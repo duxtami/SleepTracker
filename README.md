@@ -24,21 +24,26 @@ By combining robust technical foundations with a carefully crafted user interfac
 
 ## Screenshots
 
-<table style="width:100%">
-  <tr>
-    <td align="center">
-      <img src="Screenshot/Screenshot_20260804-133828.png" width="100%" alt="Sleep tracking screen"/>
-    </td>
-    <td align="center">
-      <img src="Screenshot/Screenshot_20260804-133833.png" width="100%" alt="Timeline view"/>
-    </td>
-    <td align="center">
-      <img src="Screenshot/Screenshot_20260804-133838.png" width="100%" alt="Insights and statistics"/>
-    </td>
-    <td align="center">
-      <img src="Screenshot/Screenshot_20260804-133842.png" width="100%" alt="Settings and configuration"/>
-    </td>
-  </tr>
+## Screenshots
+
+<table>
+<tr>
+<td align="center">
+<img src="Screenshot/Screenshot_20260804-133842.png" width="100%" alt="Home"/>
+</td>
+
+<td align="center">
+<img src="Screenshot/Screenshot_20260804-133838.png" width="100%" alt="Timeline"/>
+</td>
+
+<td align="center">
+<img src="Screenshot/Screenshot_20260804-133833.png" width="100%" alt="Insights"/>
+</td>
+
+<td align="center">
+<img src="Screenshot/Screenshot_20260804-133828.png" width="100%" alt="Settings"/>
+</td>
+</tr>
 </table>
 
 ## Material 3 Expressive
