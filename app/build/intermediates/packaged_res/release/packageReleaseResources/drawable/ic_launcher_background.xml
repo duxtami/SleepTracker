@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Flat background for the adaptive icon, matching the official SleepTracker logo's
-     dark navy backdrop (#232935) exactly, so the launcher icon, splash screen, and
-     in-app About mark all share one consistent brand color. Flat color only, no shading. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#232935"/>
-</shape>
