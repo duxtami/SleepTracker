@@ -83,6 +83,15 @@ fun SleepTrackerTheme(
             WindowCompat.setDecorFitsSystemWindows(window, false)
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            // statusBarColor/navigationBarColor only control the bars' own paint - the
+            // platform can separately draw its own protective contrast scrim behind them
+            // regardless of that color. Without turning this off too, a gray strip can
+            // still appear behind the status bar (notably on some OEM skins) even though
+            // the bar color itself is fully transparent.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.isStatusBarContrastEnforced = false
+                window.isNavigationBarContrastEnforced = false
+            }
             val controller = WindowInsetsControllerCompat(window, view)
             controller.isAppearanceLightStatusBars = !useDark
             controller.isAppearanceLightNavigationBars = !useDark

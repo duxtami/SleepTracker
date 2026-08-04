@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SleepTracker</string>
+    <style name="Theme.SleepTracker" parent="android:Theme.Material.Light.NoActionBar"/>
+    <style name="Theme.SleepTracker.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#232935</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.SleepTracker</item>
+    </style>
+</resources>

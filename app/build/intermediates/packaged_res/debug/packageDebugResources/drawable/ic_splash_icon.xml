@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash-only icon resource. ic_splash_logo.png contains the COMPLETE official brand
+     badge - navy circle fill and glyph together, exactly as supplied - scaled up and
+     centered with padding, unlike the launcher's foreground/monochrome layers which use a
+     glyph-only cutout (navy comes from the separate adaptive-icon background layer there
+     instead). The splash uses the full badge on purpose: windowSplashScreenBackground is a
+     near-white/near-black neutral, and the glyph's own light color has very little contrast
+     against a near-white background on its own - the badge's built-in navy backdrop is what
+     keeps the mark legible regardless of the app's chosen splash background.
+     Wrapping it in an <adaptive-icon> (rather than pointing the splash theme straight at a
+     plain drawable) is what makes the platform SplashScreen API treat it via the same code
+     path used for real adaptive icons: it reads the foreground layer's own transparent
+     padding directly instead of applying its extra "legacy icon" shrink heuristic on top.
+     The background layer here is fully transparent, so nothing is drawn beyond the badge
+     itself and the app's Material 3 windowSplashScreenBackground color (set in themes.xml /
+     values-night/themes.xml) showing through the padding around it. This resource is used
+     ONLY by Theme.SleepTracker.Splash; it does not affect the launcher icon
+     (mipmap-anydpi-v26/ic_launcher.xml) or the About screen icon
+     (res/drawable-nodpi/sleep_artwork.png), which are untouched. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@android:color/transparent"/>
+    <foreground android:drawable="@drawable/ic_splash_logo"/>
+</adaptive-icon>

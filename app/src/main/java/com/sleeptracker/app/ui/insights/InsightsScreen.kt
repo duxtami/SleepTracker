@@ -25,16 +25,18 @@ import com.sleeptracker.app.ui.components.ExpressiveCard
 import com.sleeptracker.app.ui.components.HeatmapGrid
 import com.sleeptracker.app.ui.components.SectionHeader
 import com.sleeptracker.app.ui.components.StatCard
+import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
 import com.sleeptracker.app.util.TimeUtils
 
 @Composable
 fun InsightsScreen(viewModel: InsightsViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsState()
+    val bottomBarSpace = LocalBottomBarSpace.current
 
     Scaffold(modifier = modifier, containerColor = MaterialTheme.colorScheme.background) { padding ->
         LazyColumn(
             contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 140.dp
+                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + bottomBarSpace + 24.dp
             ),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier.fillMaxSize()

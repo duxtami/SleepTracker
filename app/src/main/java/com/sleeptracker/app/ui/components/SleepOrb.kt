@@ -23,12 +23,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.sleeptracker.app.ui.theme.OrbActiveEnd
-import com.sleeptracker.app.ui.theme.OrbActiveStart
-import com.sleeptracker.app.ui.theme.OrbNightEnd
-import com.sleeptracker.app.ui.theme.OrbNightStart
 
 /**
  * The large expressive orb on the Home screen. It gently pulses and glows at rest,
@@ -52,7 +49,7 @@ fun SleepOrb(
         initialValue = 0.94f,
         targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isActive) 2600 else 3800, easing = EaseInOutSine),
+            animation = tween(if (isActive) 4200 else 3800, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
@@ -62,7 +59,7 @@ fun SleepOrb(
         initialValue = 0.55f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isActive) 2200 else 3200, easing = EaseInOutSine),
+            animation = tween(if (isActive) 3600 else 3200, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow"
@@ -72,14 +69,28 @@ fun SleepOrb(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isActive) 14000 else 22000, easing = LinearEasing),
+            animation = tween(if (isActive) 26000 else 22000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "morph"
     )
 
-    val startColor = if (isActive) OrbActiveStart else OrbNightStart
-    val endColor = if (isActive) OrbActiveEnd else OrbNightEnd
+    // Follows whatever accent color is active - Lavender, Teal, Sunset, Forest, Rose, or a
+    // generated Dynamic/Material You color - by deriving both gradient stops from
+    // colorScheme.primary itself, rather than fixed hex constants. Blending toward black/white
+    // (instead of reading other roles like tertiary or primaryContainer) is deliberate: this
+    // app's non-dynamic color styles only override the `primary` role and leave the rest of
+    // the scheme at Material's baseline defaults (see Theme.kt), so primary is the one role
+    // guaranteed to reflect the selected style in every case, dynamic or not.
+    //
+    // Both states blend only toward BLACK, never toward white/pale: blending toward white
+    // desaturates and lightens a color, which is exactly what read as "washed out" in the
+    // active state before. Keeping both stops in the same darker-tint family - just shifted
+    // to be more vivid overall while active - keeps the active visualization at least as rich
+    // as idle, while still reading as clearly different (more saturated/awake-feeling).
+    val primary = MaterialTheme.colorScheme.primary
+    val startColor = if (isActive) primary else lerp(primary, Color.Black, 0.55f)
+    val endColor = if (isActive) lerp(primary, Color.Black, 0.22f) else lerp(primary, Color.Black, 0.15f)
 
     Box(
         modifier = modifier

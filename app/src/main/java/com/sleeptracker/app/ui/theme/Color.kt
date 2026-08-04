@@ -28,9 +28,3 @@ val RosePrimaryDark = Color(0xFFFFB1C4)
 
 val AmoledBlack = Color(0xFF000000)
 val SurfaceDim = Color(0xFF0E0E14)
-
-// Sleep orb gradient stops
-val OrbNightStart = Color(0xFF2B2A5E)
-val OrbNightEnd = Color(0xFF7A5CC7)
-val OrbActiveStart = Color(0xFF5B5FC7)
-val OrbActiveEnd = Color(0xFFB08CFF)

@@ -1,0 +1,82 @@
+{
+    "logs": [
+        {
+            "outputFile": "/data/data/com.termux/files/home/.gradle/daemon/8.6/com.sleeptracker.app-mergeDebugResources-58:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "/storage/emulated/0/termux/SleepTracker/app/src/main/res/values-night/themes.xml",
+                    "from": {
+                        "startLines": "5",
+                        "startColumns": "4",
+                        "startOffsets": "381",
+                        "endLines": "9",
+                        "endColumns": "12",
+                        "endOffsets": "682"
+                    },
+                    "to": {
+                        "startLines": "3",
+                        "startColumns": "4",
+                        "startOffsets": "141",
+                        "endLines": "7",
+                        "endColumns": "12",
+                        "endOffsets": "442"
+                    }
+                },
+                {
+                    "source": "/data/data/com.termux/files/home/.gradle/caches/transforms-4/c4d74db5c95bd9337d019186b551055b/transformed/core-splashscreen-1.0.1/res/values-night-v8/values-night-v8.xml",
+                    "from": {
+                        "startLines": "-1",
+                        "startColumns": "-1",
+                        "startOffsets": "-1"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "85",
+                        "endOffsets": "136"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "com.sleeptracker.app-mergeDebugResources-58:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "/storage/emulated/0/termux/SleepTracker/app/src/main/res/values-night/themes.xml",
+                    "from": {
+                        "startLines": "8",
+                        "startColumns": "4",
+                        "startOffsets": "653",
+                        "endLines": "12",
+                        "endColumns": "12",
+                        "endOffsets": "959"
+                    },
+                    "to": {
+                        "startLines": "3",
+                        "startColumns": "4",
+                        "startOffsets": "141",
+                        "endLines": "7",
+                        "endColumns": "12",
+                        "endOffsets": "447"
+                    }
+                },
+                {
+                    "source": "/data/data/com.termux/files/home/.gradle/caches/transforms-4/c4d74db5c95bd9337d019186b551055b/transformed/core-splashscreen-1.0.1/res/values-night-v8/values-night-v8.xml",
+                    "from": {
+                        "startLines": "-1",
+                        "startColumns": "-1",
+                        "startOffsets": "-1"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "85",
+                        "endOffsets": "136"
+                    }
+                }
+            ]
+        }
+    ]
+}

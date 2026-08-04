@@ -61,6 +61,7 @@ import com.sleeptracker.app.data.model.ThemeMode
 import com.sleeptracker.app.ui.components.ExpressiveCard
 import com.sleeptracker.app.ui.components.SectionHeader
 import com.sleeptracker.app.ui.components.TimeFieldButton
+import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
 import com.sleeptracker.app.util.TimeUtils
 
 @Composable
@@ -102,6 +103,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
         uri?.let { viewModel.importJson(context, it) }
     }
 
+    val bottomBarSpace = LocalBottomBarSpace.current
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -109,7 +112,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     ) { padding ->
         LazyColumn(
             contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 140.dp
+                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + bottomBarSpace + 24.dp
             ),
             verticalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier.fillMaxSize()
@@ -310,12 +313,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                             modifier = Modifier
                                 .size(56.dp)
                                 .clip(MaterialTheme.shapes.large)
-                                .background(androidx.compose.ui.graphics.Color(0xFF3A4750)),
+                                .background(androidx.compose.ui.graphics.Color(0xFF232935)),
                             contentAlignment = Alignment.Center
                         ) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                                painter = painterResource(id = R.drawable.sleep_artwork),
                                 contentDescription = "SleepTracker logo",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                                 modifier = Modifier.size(56.dp)
                             )
                         }

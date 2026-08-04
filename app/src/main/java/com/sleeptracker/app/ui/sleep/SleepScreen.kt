@@ -59,6 +59,7 @@ import com.sleeptracker.app.ui.components.ExpressiveCard
 import com.sleeptracker.app.ui.components.SectionHeader
 import com.sleeptracker.app.ui.components.SleepOrb
 import com.sleeptracker.app.ui.components.StatCard
+import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
 import com.sleeptracker.app.util.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,6 +87,8 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
         }
     }
 
+    val bottomBarSpace = LocalBottomBarSpace.current
+
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
@@ -94,7 +97,7 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 140.dp
+                start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + bottomBarSpace + 24.dp
             ),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -135,12 +138,14 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                                     }
                                 }
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = if (phase is TrackingPhase.Tracking) TimeUtils.formatDurationClock(phase.session.durationMillis) else "—",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            if (phase is TrackingPhase.Tracking) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = TimeUtils.formatDurationClock(phase.session.durationMillis),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }

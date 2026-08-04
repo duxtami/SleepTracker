@@ -1,12 +1,48 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.SleepTracker" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Edge-to-edge / transparent system bars are declared here as STATIC theme attributes,
+         not only applied later via enableEdgeToEdge()/WindowInsetsControllerCompat in code.
+         Reason: installSplashScreen()'s postSplashScreenTheme swap re-applies this theme's
+         attributes to the window automatically when the splash is dismissed on a cold start,
+         which happens on its own timing, independent of Compose. If transparency only came
+         from runtime calls made once during MainActivity.onCreate/first composition, that
+         swap could momentarily reassert this theme's (previously default, opaque) system bar
+         attributes afterwards - producing exactly the "gray status bar that only clears once
+         Settings triggers a recomposition" bug. Declaring transparency directly in the theme
+         means every time this theme is applied to the window - cold launch, splash exit, or
+         later - it starts transparent already, with no window ever passing through an opaque
+         state. The runtime code in MainActivity/Theme.kt still runs on top of this and is
+         responsible for the one thing a static style can't express: which icon appearance
+         (light-on-dark vs dark-on-light) matches the user's live System/Light/Dark/AMOLED
+         selection. -->
+    <style name="Theme.SleepTracker" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="29">false</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="29">false</item>
+    </style>
 
-    <!-- Splash theme: same muted slate background and pillow mark used everywhere else,
-         so the launch experience matches the launcher icon and app identity. Hands off to
-         the real app theme via postSplashScreenTheme once Compose takes over. -->
+    <!-- Splash theme. windowSplashScreenAnimatedIcon points at @drawable/ic_splash_icon, a
+         dedicated <adaptive-icon> wrapper (see that file, and drawable-nodpi/ic_splash_logo.
+         png) built from the official brand badge - the complete circular mark, navy backdrop
+         included, not just the launcher's glyph-only cutout - scaled up and centered with
+         comfortable padding so it reads prominently. It carries its own navy backdrop rather
+         than reusing the launcher's transparent-background artwork specifically so it stays
+         legible against this near-white background (a light glyph alone would have very low
+         contrast here). Still wrapped as an adaptive-icon (not a plain drawable) so the
+         SplashScreen API takes the same non-cropping sizing path used for the launcher icon.
+         The launcher icon (mipmap-anydpi-v26/ic_launcher.xml, drawable-nodpi/
+         ic_launcher_foreground.png) and the About screen artwork (drawable-nodpi/
+         sleep_artwork.png) are untouched by this change. No windowSplashScreenIconBackground
+         Color is set, so no extra circle/backdrop is drawn by the platform itself - just this
+         logo centered on windowSplashScreenBackground below. That background is a Material 3
+         neutral matching this app's light scheme; values-night/themes.xml carries the
+         dark-mode equivalent. Hands off to the real app theme via postSplashScreenTheme -
+         MainActivity then plays a custom 400ms fade+scale as this single splash exits, so
+         only one splash is ever shown. -->
     <style name="Theme.SleepTracker.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#3A4750</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">#FFFBFE</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
         <item name="postSplashScreenTheme">@style/Theme.SleepTracker</item>
     </style>
 </resources>

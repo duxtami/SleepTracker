@@ -1,5 +1,8 @@
 package com.sleeptracker.app.ui.timeline
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,7 +27,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
@@ -44,7 +47,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
@@ -62,12 +64,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sleeptracker.app.data.datastore.START_DELAY_OPTIONS_MINUTES
 import com.sleeptracker.app.data.model.Mood
 import com.sleeptracker.app.data.model.SleepSession
 import com.sleeptracker.app.ui.components.DateTimeFieldRow
+import com.sleeptracker.app.ui.components.ExpressiveSnackbarHost
+import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
 import com.sleeptracker.app.ui.theme.CardShape
 import com.sleeptracker.app.util.TimeUtils
 import kotlinx.coroutines.launch
@@ -82,7 +87,7 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
 
     var showAddSheet by remember { mutableStateOf(false) }
     var editingSession by remember { mutableStateOf<SleepSession?>(null) }
-    val expandedMonths = remember { mutableStateOf(setOf<String>()) }
+    val expandedMonths = remember { mutableStateOf(setOf(TimeUtils.monthKey(System.currentTimeMillis()))) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
 
@@ -106,17 +111,17 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            if (!selectionMode) {
-                FloatingActionButton(onClick = { showAddSheet = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add sleep entry")
-                }
+    val bottomBarSpace = LocalBottomBarSpace.current
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            snackbarHost = {
+                ExpressiveSnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(bottom = bottomBarSpace + 16.dp)
+                )
             }
-        }
-    ) { padding ->
+        ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             if (selectionMode) {
                 Row(
@@ -153,7 +158,10 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
             }
 
             if (state.groups.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(bottom = bottomBarSpace),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
                         text = if (state.searchQuery.isBlank()) "No sleep sessions yet.\nTap + to log your first night."
                         else "No results for \"${state.searchQuery}\"",
@@ -163,23 +171,37 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 140.dp, top = 8.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = bottomBarSpace + 24.dp, top = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     state.groups.forEach { group ->
                         val isExpanded = expandedMonths.value.contains(group.monthKey) || state.groups.size == 1
                         item(key = "header_${group.monthKey}") {
+                            val rotation by animateFloatAsState(
+                                targetValue = if (isExpanded) 180f else 0f,
+                                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+                                label = "monthChevronRotation"
+                            )
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.large)
+                                    .clickable(
+                                        onClickLabel = if (isExpanded) "Collapse ${group.label}" else "Expand ${group.label}"
+                                    ) {
+                                        expandedMonths.value = if (isExpanded) expandedMonths.value - group.monthKey else expandedMonths.value + group.monthKey
+                                    }
+                                    .heightIn(min = 48.dp)
+                                    .padding(horizontal = 4.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(group.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                                IconButton(onClick = {
-                                    expandedMonths.value = if (isExpanded) expandedMonths.value - group.monthKey else expandedMonths.value + group.monthKey
-                                }) {
-                                    Icon(if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null)
-                                }
+                                Icon(
+                                    Icons.Filled.ExpandMore,
+                                    contentDescription = null,
+                                    modifier = Modifier.graphicsLayer { rotationZ = rotation }
+                                )
                             }
                         }
                         if (isExpanded) {
@@ -188,6 +210,9 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
                                     session = session,
                                     selectionMode = selectionMode,
                                     isSelected = selectedIds.contains(session.id),
+                                    modifier = Modifier.animateItemPlacement(
+                                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    ),
                                     onTap = {
                                         if (selectionMode) {
                                             selectedIds = if (selectedIds.contains(session.id)) selectedIds - session.id else selectedIds + session.id
@@ -209,6 +234,18 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
                         }
                     }
                 }
+            }
+        }
+        }
+
+        if (!selectionMode) {
+            FloatingActionButton(
+                onClick = { showAddSheet = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = bottomBarSpace + 16.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add sleep entry")
             }
         }
     }
@@ -245,7 +282,8 @@ private fun SessionCard(
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     if (selectionMode) {
         Card(
@@ -253,7 +291,7 @@ private fun SessionCard(
             colors = CardDefaults.cardColors(
                 containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
             ),
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .combinedClickable(onClick = onTap, onLongClick = onLongPress)
         ) {
@@ -280,6 +318,7 @@ private fun SessionCard(
 
     SwipeToDismissBox(
         state = dismissState,
+        modifier = modifier,
         backgroundContent = {
             val isEditSide = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd
             Box(

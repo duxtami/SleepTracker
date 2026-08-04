@@ -10,7 +10,12 @@ import java.util.Locale
 
 object TimeUtils {
 
-    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+    // Non-breaking space (\u00A0) before "a" (AM/PM), not a regular space: a regular space is
+    // a valid line-break point for Compose's default text wrapping, which is what let a stat
+    // card's "10:32 AM" value wrap into "10:32" / "AM" on narrower cards/screens. Keeping the
+    // whole time as one unbreakable token means it now either fits on one line as intended, or
+    // falls back to the value Text's own maxLines/ellipsis safeguard - never an awkward wrap.
+    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm\u00A0a", Locale.getDefault())
     private val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
     private val monthYearFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault())
 

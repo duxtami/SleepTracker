@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sleeptracker.app.ui.theme.CardShape
 
@@ -56,12 +57,20 @@ fun StatCard(
     caption: String? = null
 ) {
     ExpressiveCard(modifier = modifier, contentPadding = PaddingValues(16.dp)) {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         Text(
             text = value,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(top = 4.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp).fillMaxWidth()
         )
         if (caption != null) {
             Text(

@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.sleeptracker.app-mergeReleaseResources-55:/values-night-v8/values-night-v8.xml",
+            "map": [
+                {
+                    "source": "/data/data/com.termux/files/home/.gradle/caches/transforms-4/c4d74db5c95bd9337d019186b551055b/transformed/core-splashscreen-1.0.1/res/values-night-v8/values-night-v8.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "85",
+                        "endOffsets": "136"
+                    }
+                }
+            ]
+        }
+    ]
+}

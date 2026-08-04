@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark-mode counterpart of values/themes.xml's splash style: same @drawable/ic_splash_icon
+     artwork (see the comment there for why it's a dedicated adaptive-icon wrapper and not the
+     raw foreground drawable, and why it's scaled up from the launcher icon's version), just a
+     dark Material 3 neutral background instead of the light one. Theme.SleepTracker itself
+     (the transparent-status-bar attributes) isn't redeclared here - it's not a light/dark
+     concern, so the one definition in values/themes.xml applies in both modes. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.SleepTracker.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#141218</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.SleepTracker</item>
+    </style>
+</resources>

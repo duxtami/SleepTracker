@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,14 +61,25 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
 
     Scaffold(
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            // TopAppBar's default containerColor is colorScheme.surfaceContainer, a distinct
+            // tonal-elevation gray. Since the bar's own windowInsets extend it up behind the
+            // (transparent) status bar, that default color is what was showing through as a
+            // gray strip behind the clock/system icons - not a real status bar background.
+            // Pinning it to the same background color as the rest of the screen makes the
+            // status bar area blend seamlessly instead.
             TopAppBar(
                 title = { Text("Sleep details") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { padding ->
