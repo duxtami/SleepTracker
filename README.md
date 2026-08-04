@@ -101,14 +101,6 @@ If you prefer not to compile the project, pre-built APK files are available on t
 - `ui`: Houses all Jetpack Compose screens, custom UI components, application navigation graphs, and Material 3 theme configurations.
 - `util`: Provides helper functions for date/time formatting, sleep metric calculations, and local backup generation.
 
-## Roadmap
-
-- [ ] Export sleep data to CSV/JSON formats.
-- [ ] Implement smart alarms based on sleep cycle calculation.
-- [ ] Support for external wearable device integration.
-- [ ] Add localized translations for broader accessibility.
-- [ ] Introduce a homescreen widget for quick session toggles.
-
 ## Contributing
 
 We welcome contributions from the open-source community. If you would like to improve SleepTracker, please ensure your changes align with the current architecture and design philosophy.
