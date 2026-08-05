@@ -86,7 +86,7 @@ The architecture reflects the latest recommended Android development standards:
 
 ### Clone
 ```bash
-git clone https://github.com/your-username/SleepTracker.git
+git clone https://github.com/duxtami/SleepTracker.git
 ```
 
 ### Build with Android Studio
