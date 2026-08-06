@@ -24,8 +24,6 @@ By combining robust technical foundations with a carefully crafted user interfac
 
 ## Screenshots
 
-## Screenshots
-
 <table>
 <tr>
 <td align="center">
