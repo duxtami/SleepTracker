@@ -1,7 +1,18 @@
 package com.sleeptracker.app.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +30,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -36,6 +50,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,12 +60,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,7 +81,9 @@ import com.sleeptracker.app.ui.components.ExpressiveCard
 import com.sleeptracker.app.ui.components.SectionHeader
 import com.sleeptracker.app.ui.components.TimeFieldButton
 import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
+import com.sleeptracker.app.ui.theme.GoogleSansFlexAxes
 import com.sleeptracker.app.util.TimeUtils
+import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) {
@@ -177,12 +198,85 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Font scale: ${"%.1f".format(settings.fontScale)}x", style = MaterialTheme.typography.labelLarge)
-                    Slider(
-                        value = settings.fontScale,
-                        onValueChange = { viewModel.setFontScale(it) },
-                        valueRange = 0.85f..1.3f
+                    RowSwitch(
+                        title = "Use Application Font",
+                        subtitle = "Apply a custom typeface throughout the app",
+                        checked = settings.useApplicationFont,
+                        onCheckedChange = viewModel::setUseApplicationFont
                     )
+                }
+            }
+
+            // ---------------- Google Sans Flex customization ----------------
+            item {
+                AnimatedVisibility(
+                    visible = settings.useApplicationFont,
+                    enter = fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) +
+                        expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)),
+                    exit = fadeOut(animationSpec = tween(150)) + shrinkVertically(animationSpec = tween(200))
+                ) {
+                    GoogleSansFlexCustomizationCard(
+                        weightAxis = settings.fontWeightAxis,
+                        widthAxis = settings.fontWidthAxis,
+                        roundnessAxis = settings.fontRoundnessAxis,
+                        onWeightChange = viewModel::setFontWeightAxis,
+                        onWidthChange = viewModel::setFontWidthAxis,
+                        onRoundnessChange = viewModel::setFontRoundnessAxis
+                    )
+                }
+            }
+
+            // ---------------- Sleep Schedule ----------------
+            item {
+                ExpressiveCard {
+                    SectionHeader(title = "Sleep Schedule")
+                    Text(
+                        "Your default bedtime and wake-up time. This is used to automatically calculate your sleep goal across the app.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        TimeFieldButton(
+                            label = "Bedtime",
+                            hour = settings.scheduleBedtimeHour,
+                            minute = settings.scheduleBedtimeMinute,
+                            onChange = viewModel::setScheduleBedtime,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TimeFieldButton(
+                            label = "Wake-up time",
+                            hour = settings.scheduleWakeHour,
+                            minute = settings.scheduleWakeMinute,
+                            onChange = viewModel::setScheduleWakeTime,
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.End
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Sleep goal",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                TimeUtils.formatMinutesAsHoursMinutes(settings.sleepGoalMinutes),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
                 }
             }
 
@@ -191,17 +285,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 ExpressiveCard {
                     SectionHeader(title = "Tracking")
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "Sleep goal: ${TimeUtils.formatMinutesAsHoursMinutes(settings.sleepGoalMinutes)}",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Slider(
-                        value = settings.sleepGoalMinutes.toFloat(),
-                        onValueChange = { viewModel.setSleepGoalMinutes(it.toInt()) },
-                        valueRange = 240f..720f,
-                        steps = 15
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
                     StartDelayPicker(
                         selectedMinutes = settings.startDelayMinutes,
                         onSelect = viewModel::setStartDelayMinutes
@@ -224,7 +307,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         title = "Bedtime reminder",
                         subtitle = "Get nudged when it's time to wind down",
                         checked = settings.bedtimeReminderEnabled,
-                        onCheckedChange = viewModel::setBedtimeReminderEnabled
+                        onCheckedChange = { enabled -> viewModel.setBedtimeReminderEnabled(context, enabled) }
                     )
                     if (settings.bedtimeReminderEnabled) {
                         Spacer(modifier = Modifier.height(8.dp))
@@ -232,23 +315,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                             label = "Bedtime reminder time",
                             hour = settings.bedtimeReminderHour,
                             minute = settings.bedtimeReminderMinute,
-                            onChange = viewModel::setBedtimeReminderTime
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    RowSwitch(
-                        title = "Wake-up reminder",
-                        subtitle = "Get nudged when it's time to get up",
-                        checked = settings.wakeReminderEnabled,
-                        onCheckedChange = viewModel::setWakeReminderEnabled
-                    )
-                    if (settings.wakeReminderEnabled) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TimeFieldButton(
-                            label = "Wake-up reminder time",
-                            hour = settings.wakeReminderHour,
-                            minute = settings.wakeReminderMinute,
-                            onChange = viewModel::setWakeReminderTime
+                            onChange = { hour, minute -> viewModel.setBedtimeReminderTime(context, hour, minute) }
                         )
                     }
                 }
@@ -309,20 +376,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     SectionHeader(title = "About")
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(MaterialTheme.shapes.large)
-                                .background(androidx.compose.ui.graphics.Color(0xFF232935)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.sleep_artwork),
-                                contentDescription = "SleepTracker logo",
-                                contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                                modifier = Modifier.size(56.dp)
-                            )
-                        }
+                        // Use the exact official launcher/splash logo asset as-is:
+                        // no circular container, no clip, no border, no extra padding.
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_splash_logo),
+                            contentDescription = "SleepTracker logo",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                            modifier = Modifier.size(56.dp)
+                        )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text("SleepTracker", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -335,6 +396,39 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.large)
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/duxtami/SleepTracker"))
+                                runCatching { context.startActivity(intent) }
+                            }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                imageVector = Icons.Filled.Code,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                "Source Code",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Open GitHub repository",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
@@ -402,6 +496,124 @@ private fun StartDelayPicker(selectedMinutes: Int, onSelect: (Int) -> Unit) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Expandable card that surfaces the real Google Sans Flex variation axes (weight, width,
+ * roundness) as Material sliders. Collapsed by default so the Appearance section doesn't feel
+ * overwhelming, but the header itself is one tap to open - matching the same collapse/expand
+ * affordance Timeline's month headers already use elsewhere in the app.
+ */
+@Composable
+private fun GoogleSansFlexCustomizationCard(
+    weightAxis: Float,
+    widthAxis: Float,
+    roundnessAxis: Float,
+    onWeightChange: (Float) -> Unit,
+    onWidthChange: (Float) -> Unit,
+    onRoundnessChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        label = "flexCardChevronRotation"
+    )
+
+    ExpressiveCard(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.large)
+                .clickable(onClickLabel = if (expanded) "Collapse" else "Expand") { expanded = !expanded }
+                // The clip above uses shapes.large - a 28dp corner radius - and clickable's
+                // ripple fills right out to that clipped edge, which is exactly why it needs to
+                // come *after* clip+clickable rather than before: this inset is what keeps the
+                // header's own text and icon clear of that rounded corner and the card's edges,
+                // while the ripple itself still spans the full row.
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text(
+                    "Typography",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    "Fine-tune weight, width, and roundness across the whole app",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Icon(
+                imageVector = Icons.Filled.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.graphicsLayer { rotationZ = rotation }
+            )
+        }
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)) +
+                expandVertically(animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)),
+            exit = fadeOut(animationSpec = tween(150)) + shrinkVertically(animationSpec = tween(200))
+        ) {
+            Column(modifier = Modifier.padding(top = 20.dp, start = 8.dp, end = 8.dp)) {
+                AxisSliderRow(
+                    label = "Weight",
+                    value = weightAxis,
+                    range = GoogleSansFlexAxes.WEIGHT_RANGE,
+                    valueLabel = weightAxis.roundToInt().toString(),
+                    onValueChange = onWeightChange
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                AxisSliderRow(
+                    label = "Width",
+                    value = widthAxis,
+                    range = GoogleSansFlexAxes.WIDTH_RANGE,
+                    valueLabel = "${widthAxis.roundToInt()}%",
+                    onValueChange = onWidthChange
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                AxisSliderRow(
+                    label = "Roundness",
+                    value = roundnessAxis,
+                    range = GoogleSansFlexAxes.ROUNDNESS_RANGE,
+                    valueLabel = "${roundnessAxis.roundToInt()}%",
+                    onValueChange = onRoundnessChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AxisSliderRow(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    valueLabel: String,
+    onValueChange: (Float) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(valueLabel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = range,
+            modifier = Modifier.semantics { contentDescription = "$label: $valueLabel" }
+        )
     }
 }
 

@@ -1,9 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Lets the bedtime reminder alarm survive a reboot: AlarmManager alarms are wiped when the
+         device restarts, so BootCompletedReceiver reschedules it from whatever is currently
+         saved in Settings. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Lets the bedtime reminder fire at the exact minute the user picked rather than
+         wherever the OS's Doze-batching window happens to land. This is a "special" permission:
+         auto-granted at install on API 31-32, and user-grantable (not requestable via a runtime
+         dialog) on API 33+ via canScheduleExactAlarms()/ACTION_REQUEST_SCHEDULE_EXACT_ALARM.
+         BedtimeReminderScheduler checks canScheduleExactAlarms() itself and falls back to an
+         inexact alarm if it isn't granted, so the reminder still fires either way. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Powers "Detect last screen-off time" in Add Sleep Entry. This is a special app-op
+         permission, not a runtime one - the user grants it via Settings > Apps > Special app
+         access > Usage access (which BedtimeDetector deep-links to), never through an in-app
+         permission dialog. Declaring it here only makes the app *eligible* to request that
+         access; it grants nothing by itself. tools:ignore suppresses the ProtectedPermissions
+         lint warning, which exists to flag *signature*-protected permissions - this one is
+         normal for any app to declare and have the user opt into. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Lets the system resolve an ACTION_VIEW https browser Intent (Settings -> About ->
+         Source Code) to whichever browser the user has set as default, without this app ever
+         naming a specific one. VIEW+BROWSABLE+https is on Android's auto-visible "common
+         intents" allowlist, so this isn't strictly required for the Intent to resolve, but
+         declaring it explicitly keeps the app's package-visibility story self-documenting. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
 
     <application
         android:name=".SleepTrackerApp"
@@ -30,6 +66,18 @@
             android:name=".service.SleepTrackingService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <receiver
+            android:name=".receiver.BedtimeReminderReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".receiver.BootCompletedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

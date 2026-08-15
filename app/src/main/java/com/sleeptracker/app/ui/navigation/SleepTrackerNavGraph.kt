@@ -2,6 +2,7 @@ package com.sleeptracker.app.ui.navigation
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
@@ -125,6 +126,8 @@ fun SleepTrackerNavGraph(container: AppContainer) {
                 },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
                     .padding(bottom = NavBarBottomOffset)
                     .onGloballyPositioned { coordinates ->
                         navBarHeight = with(density) { coordinates.size.height.toDp() }

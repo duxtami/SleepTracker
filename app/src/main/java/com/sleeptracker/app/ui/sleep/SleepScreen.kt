@@ -37,7 +37,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -56,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sleeptracker.app.data.model.Mood
 import com.sleeptracker.app.ui.components.ExpressiveCard
+import com.sleeptracker.app.ui.components.ExpressiveSnackbarHost
 import com.sleeptracker.app.ui.components.SectionHeader
 import com.sleeptracker.app.ui.components.SleepOrb
 import com.sleeptracker.app.ui.components.StatCard
@@ -92,7 +92,12 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
     Scaffold(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = {
+            ExpressiveSnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(bottom = bottomBarSpace + 16.dp)
+            )
+        }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -187,13 +192,32 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
             item {
                 ExpressiveCard {
                     SectionHeader(title = "Sleep goal")
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "${(state.goalProgress * 100).toInt().coerceIn(0, 100)}%",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = " of goal reached",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 6.dp, start = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
                     LinearProgressIndicator(
                         progress = { state.goalProgress },
-                        modifier = Modifier.fillMaxWidth().height(10.dp),
-                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(12.dp)
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50)),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "Goal: ${TimeUtils.formatMinutesAsHoursMinutes(state.settings.sleepGoalMinutes)}",
                         style = MaterialTheme.typography.bodyMedium,

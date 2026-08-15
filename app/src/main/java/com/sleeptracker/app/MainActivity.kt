@@ -77,7 +77,11 @@ class MainActivity : ComponentActivity() {
             SleepTrackerTheme(
                 themeMode = settings.themeMode,
                 dynamicColor = settings.dynamicColor,
-                colorStyle = settings.colorStyle
+                colorStyle = settings.colorStyle,
+                useApplicationFont = settings.useApplicationFont,
+                fontWeightAxis = settings.fontWeightAxis,
+                fontWidthAxis = settings.fontWidthAxis,
+                fontRoundnessAxis = settings.fontRoundnessAxis
             ) {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     SleepTrackerNavGraph(container = container)

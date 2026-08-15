@@ -65,6 +65,12 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
         viewModelScope.launch { repository.restoreSession(session) }
     }
 
+    /** Called once a delete's undo window has passed without the user tapping Undo, to clean up
+     *  the journal notes that were intentionally left behind in case of a restore. */
+    fun confirmPermanentDelete(sessionId: Long) {
+        viewModelScope.launch { repository.purgeNotesForSession(sessionId) }
+    }
+
     fun updateSession(
         session: SleepSession,
         startEpochMillis: Long,

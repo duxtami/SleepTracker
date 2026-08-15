@@ -15,15 +15,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -88,26 +93,52 @@ fun ExpressiveSnackbarHost(
 @Composable
 private fun ExpressiveSnackbar(data: SnackbarData) {
     Surface(
+        // Deliberately content-hugging rather than a full-width bar: a compact floating pill
+        // reads as an intentional, Expressive piece of UI - matching FloatingNavBar and the FAB,
+        // which are both compact shapes rather than edge-to-edge bars - instead of a generic
+        // full-width toast. It also sidesteps the FAB entirely for any message this short; the
+        // max width below is only a safety cap for the rare long message, not a target width.
         modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .widthIn(max = 480.dp),
+            .padding(horizontal = 24.dp)
+            .widthIn(max = 420.dp),
         shape = SnackbarShape,
-        color = MaterialTheme.colorScheme.inverseSurface,
-        contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+        // Previously inverseSurface/inverseOnSurface - the classic "toast" Snackbar look,
+        // which is deliberately the *opposite* tone of the current theme (a light card in dark
+        // mode, a dark card in light mode). That's normally intentional Material 3 spec
+        // behavior, but here it reads as an off-theme, near-white card breaking out of an
+        // otherwise dark/AMOLED/dynamic-color app. surfaceContainerHigh is the same elevated
+        // container token FloatingNavBar and every card in this app already use, so the
+        // Snackbar now inherits the same dynamic-color-aware Material You palette as everything
+        // else instead of standing apart from it.
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         shadowElevation = 6.dp,
-        tonalElevation = 3.dp
+        tonalElevation = 4.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 24.dp, end = 12.dp, top = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Actionable messages (delete-with-undo) read as a confirmation, so they get the
+            // filled checkmark in the theme's primary color - the same "done" language as a
+            // system-style success toast. Plain messages (errors, status updates with no
+            // action) keep a neutral outline icon instead, since a checkmark would misread as
+            // success on an error message.
+            val hasAction = data.visuals.actionLabel != null
+            Icon(
+                imageVector = if (hasAction) Icons.Filled.CheckCircle else Icons.Filled.ErrorOutline,
+                contentDescription = null,
+                tint = if (hasAction) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
             Text(
                 text = data.visuals.message,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f, fill = false)
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = 10.dp, end = 4.dp)
             )
             val actionLabel = data.visuals.actionLabel
             if (actionLabel != null) {
@@ -115,9 +146,10 @@ private fun ExpressiveSnackbar(data: SnackbarData) {
                     onClick = { data.performAction() },
                     shape = CircleShape,
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.inversePrimary
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                        contentColor = MaterialTheme.colorScheme.primary
                     ),
-                    modifier = Modifier.padding(start = 8.dp)
+                    modifier = Modifier.padding(start = 4.dp)
                 ) {
                     Text(
                         text = actionLabel,

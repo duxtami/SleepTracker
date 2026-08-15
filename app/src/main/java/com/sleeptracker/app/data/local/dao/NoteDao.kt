@@ -20,4 +20,7 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes ORDER BY createdAtEpochMillis DESC")
     fun observeAll(): Flow<List<NoteEntity>>
+
+    @Query("DELETE FROM notes WHERE sessionId = :sessionId")
+    suspend fun deleteForSession(sessionId: Long)
 }

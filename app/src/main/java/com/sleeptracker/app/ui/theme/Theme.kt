@@ -47,6 +47,10 @@ fun SleepTrackerTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
     colorStyle: ColorStyle = ColorStyle.DYNAMIC,
+    useApplicationFont: Boolean = false,
+    fontWeightAxis: Float = GoogleSansFlexAxes.WEIGHT_MAX,
+    fontWidthAxis: Float = GoogleSansFlexAxes.WIDTH_MAX,
+    fontRoundnessAxis: Float = GoogleSansFlexAxes.ROUNDNESS_MAX,
     content: @Composable () -> Unit
 ) {
     val systemDark = isSystemInDarkTheme()
@@ -67,12 +71,25 @@ fun SleepTrackerTheme(
     }
 
     if (themeMode == ThemeMode.AMOLED) {
+        // Every surface role a screen, card, dialog, bottom sheet, or Snackbar could possibly
+        // be painted with is overridden here - not just background/surface - to a neutral,
+        // hue-free black ladder. Leaving surfaceContainerHigh/Highest, surfaceVariant, or
+        // surfaceBright on the underlying dynamic/static dark scheme (as the previous version
+        // did) is exactly what let FloatingNavBar, cards, and dialogs keep showing a
+        // chromatic-tinted dark gray instead of true AMOLED black.
         colorScheme = colorScheme.copy(
             background = AmoledBlack,
             surface = AmoledBlack,
+            surfaceDim = AmoledBlack,
             surfaceContainerLowest = AmoledBlack,
-            surfaceContainerLow = SurfaceDim,
-            surfaceContainer = SurfaceDim
+            surfaceContainerLow = AmoledSurfaceContainerLow,
+            surfaceContainer = AmoledSurfaceContainer,
+            surfaceContainerHigh = AmoledSurfaceContainerHigh,
+            surfaceContainerHighest = AmoledSurfaceContainerHighest,
+            surfaceVariant = AmoledSurfaceVariant,
+            surfaceBright = AmoledSurfaceBright,
+            inverseSurface = AmoledSurfaceContainerHighest,
+            inverseOnSurface = androidx.compose.ui.graphics.Color.White
         )
     }
 
@@ -98,9 +115,16 @@ fun SleepTrackerTheme(
         }
     }
 
+    val typography = rememberAppTypography(
+        useApplicationFont = useApplicationFont,
+        weightAxis = fontWeightAxis,
+        widthAxis = fontWidthAxis,
+        roundnessAxis = fontRoundnessAxis
+    )
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = SleepTrackerTypography,
+        typography = typography,
         shapes = SleepTrackerShapes,
         content = content
     )

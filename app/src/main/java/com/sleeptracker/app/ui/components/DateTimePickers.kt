@@ -20,9 +20,11 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -64,7 +66,11 @@ fun M3TimePickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (hour: Int, minute: Int) -> Unit
 ) {
-    val state = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute, is24Hour = false)
+    // Respect the device's actual 12h/24h clock preference (Settings > System > Date & time)
+    // rather than assuming one - this is what every other clock/alarm surface on the device does.
+    val context = LocalContext.current
+    val is24Hour = remember { android.text.format.DateFormat.is24HourFormat(context) }
+    val state = rememberTimePickerState(initialHour = initialHour, initialMinute = initialMinute, is24Hour = is24Hour)
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = MaterialTheme.shapes.extraLarge, tonalElevation = 6.dp) {
             Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -97,13 +103,17 @@ fun DateTimeFieldRow(
     onChange: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showDatePicker by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showTimePicker by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showDatePicker by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showTimePicker by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     val zoned = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
 
     Column(modifier = modifier) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Spacer(modifier = Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.weight(1f)) {
@@ -149,11 +159,12 @@ fun TimeFieldButton(
     hour: Int,
     minute: Int,
     onChange: (hour: Int, minute: Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start
 ) {
     var showTimePicker by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
-    Column(modifier = modifier) {
+    Column(modifier = modifier, horizontalAlignment = horizontalAlignment) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedButton(onClick = { showTimePicker = true }) {

@@ -28,6 +28,7 @@ class SleepTrackingService : Service() {
         const val ACTION_PAUSE = "com.sleeptracker.app.action.PAUSE"
         const val ACTION_RESUME = "com.sleeptracker.app.action.RESUME"
         const val ACTION_STOP = "com.sleeptracker.app.action.STOP"
+        const val ACTION_REPOST_NOTIFICATION = "com.sleeptracker.app.action.REPOST_NOTIFICATION"
 
         const val EXTRA_DELAY_MINUTES = "extra_delay_minutes"
         const val EXTRA_MOOD = "extra_mood"
@@ -68,6 +69,7 @@ class SleepTrackingService : Service() {
                 ACTION_PAUSE -> handlePause()
                 ACTION_RESUME -> handleResume()
                 ACTION_STOP -> handleStop(intent)
+                ACTION_REPOST_NOTIFICATION -> handleRepostNotification()
                 else -> Log.w(TAG, "Received unknown or null action: ${intent?.action}")
             }
         } catch (e: Exception) {
@@ -193,6 +195,25 @@ class SleepTrackingService : Service() {
             // service isn't torn down mid-write.
             runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
             runCatching { stopSelf() }
+        }
+    }
+
+    /**
+     * Safety-net handler for [NotificationHelper.buildSleepingNotification]'s delete intent.
+     * On the rare device where the ongoing/foreground notification can still be swiped away,
+     * this fires immediately and reposts it — but only while the session is still actively
+     * (non-paused) tracking. If the session has since been paused or stopped, this is a no-op,
+     * since those are the two states where the notification is allowed to go away.
+     */
+    private fun handleRepostNotification() {
+        serviceScope.launch {
+            runCatching {
+                val active = container.sleepRepository.observeActiveSession().first()
+                if (active != null && !active.isPaused) {
+                    NotificationManagerCompat.from(this@SleepTrackingService)
+                        .notify(NotificationHelper.NOTIFICATION_ID, NotificationHelper.buildSleepingNotification(this@SleepTrackingService, active.startEpochMillis))
+                }
+            }.onFailure { Log.e(TAG, "Failed to repost sleeping notification after swipe", it) }
         }
     }
 

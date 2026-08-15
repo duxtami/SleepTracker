@@ -27,4 +27,18 @@ val RosePrimaryLight = Color(0xFFB01458)
 val RosePrimaryDark = Color(0xFFFFB1C4)
 
 val AmoledBlack = Color(0xFF000000)
-val SurfaceDim = Color(0xFF0E0E14)
+
+// True AMOLED surface ladder: neutral grays only (equal R/G/B at every step), rising in
+// lightness with elevation exactly like Material's dark elevation-overlay convention, but with
+// zero hue tint. The bug this replaces was surfaceContainerHigh/Highest (used by FloatingNavBar,
+// cards, dialogs, the Snackbar, bottom sheets) being left un-overridden in AMOLED mode, so they
+// kept whatever chromatic tint the active dynamic/static dark scheme gave them - visible as a
+// dark blue/gray cast instead of true black-based neutrals - plus the one level that *was*
+// overridden (surfaceContainer/Low) used to point at SurfaceDim = 0xFF0E0E14, which itself
+// leaned blue (its blue channel is highest of the three).
+val AmoledSurfaceContainerLow = Color(0xFF0A0A0A)
+val AmoledSurfaceContainer = Color(0xFF121212)
+val AmoledSurfaceContainerHigh = Color(0xFF1C1C1C)
+val AmoledSurfaceContainerHighest = Color(0xFF272727)
+val AmoledSurfaceVariant = Color(0xFF1C1C1C)
+val AmoledSurfaceBright = Color(0xFF2E2E2E)

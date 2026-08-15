@@ -19,10 +19,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -32,12 +34,14 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,9 +56,11 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,8 +71,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.sleeptracker.app.data.datastore.START_DELAY_OPTIONS_MINUTES
 import com.sleeptracker.app.data.model.Mood
 import com.sleeptracker.app.data.model.SleepSession
@@ -74,6 +84,7 @@ import com.sleeptracker.app.ui.components.DateTimeFieldRow
 import com.sleeptracker.app.ui.components.ExpressiveSnackbarHost
 import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
 import com.sleeptracker.app.ui.theme.CardShape
+import com.sleeptracker.app.util.BedtimeDetector
 import com.sleeptracker.app.util.TimeUtils
 import kotlinx.coroutines.launch
 import java.time.ZoneId
@@ -107,21 +118,26 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
             )
             if (result == SnackbarResult.ActionPerformed) {
                 sessions.forEach { viewModel.restoreSession(it) }
+            } else {
+                sessions.forEach { viewModel.confirmPermanentDelete(it.id) }
             }
         }
     }
 
     val bottomBarSpace = LocalBottomBarSpace.current
 
+    // The FAB and Snackbar are deliberately placed here, in this Box, rather than through
+    // Scaffold's own `floatingActionButton`/`snackbarHost` slots. Scaffold has real built-in
+    // logic that automatically raises a Snackbar above a FAB it's hosting - but that logic
+    // measures the FAB slot's own placed size, and a `Modifier.padding(bottom = bottomBarSpace)`
+    // on the FAB (needed so it clears FloatingNavBar, which sits outside every screen's
+    // Scaffold entirely) inflates that measured size by the same amount. The two clearances
+    // then stack on top of each other - Scaffold's automatic FAB-avoidance offset PLUS this
+    // screen's own manual nav-bar clearance - and the Snackbar ends up floating far higher than
+    // intended. Placing both directly in this Box instead means their spacing above the nav bar
+    // is set exactly once, in exactly one place, with nothing implicit stacking on top of it.
     Box(modifier = modifier.fillMaxSize()) {
-        Scaffold(
-            snackbarHost = {
-                ExpressiveSnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier.padding(bottom = bottomBarSpace + 16.dp)
-                )
-            }
-        ) { padding ->
+        Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
             if (selectionMode) {
                 Row(
@@ -238,16 +254,31 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
         }
         }
 
+        // A standard FAB is 56dp; this is the actual token M3 uses, not a guess - see
+        // FloatingActionButtonDefaults in Material3, which sizes the default FAB at 56.dp.
+        val fabEndPadding = 28.dp
+        val fabBottomGap = 8.dp
+
         if (!selectionMode) {
             FloatingActionButton(
                 onClick = { showAddSheet = true },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = bottomBarSpace + 16.dp)
+                    .padding(end = fabEndPadding, bottom = bottomBarSpace + fabBottomGap)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add sleep entry")
             }
         }
+
+        // ExpressiveSnackbar is now a compact, content-hugging pill (not a full-width bar), so
+        // at the same low height as the FAB it naturally clears it for any realistically short
+        // message without needing an asymmetric width/end-padding workaround.
+        ExpressiveSnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = bottomBarSpace + fabBottomGap)
+        )
     }
 
     if (showAddSheet) {
@@ -425,6 +456,37 @@ private fun SessionCardContent(session: SleepSession, leadingSelectionIcon: Bool
     }
 }
 
+/** Status line shown under the "Detect longest screen-off time" button: what was found and where
+ *  it came from, or a plain heads-up that nothing could be detected this time. */
+@Composable
+private fun DetectionCaption(detection: BedtimeDetector.Result?, zone: ZoneId) {
+    when (detection) {
+        is BedtimeDetector.Result.Detected -> {
+            val durationLabel = TimeUtils.formatDurationShort(detection.endEpochMillis - detection.startEpochMillis)
+            val sourceLabel = when (detection.source) {
+                BedtimeDetector.Source.SCREEN_EVENTS -> "your screen's longest continuous off period"
+                BedtimeDetector.Source.APP_INACTIVITY_GAP -> "your longest recent stretch without phone activity"
+            }
+            Text(
+                "Set Start to ${TimeUtils.formatTime(detection.startEpochMillis, zone.id)} and End to " +
+                    "${TimeUtils.formatTime(detection.endEpochMillis, zone.id)} ($durationLabel), based on $sourceLabel",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        BedtimeDetector.Result.Unavailable -> {
+            Text(
+                "Couldn't detect a sleep period automatically this time - set Start and End manually instead",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        BedtimeDetector.Result.PermissionRequired, null -> Unit
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SessionEditorSheet(
@@ -444,6 +506,44 @@ internal fun SessionEditorSheet(
     var delayUsed by remember(initial) { mutableStateOf(initial?.startDelayMinutesUsed ?: 0) }
     var delayMenuExpanded by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    var sleepDetection by remember(initial) { mutableStateOf<BedtimeDetector.Result?>(null) }
+    var showUsageAccessDialog by remember { mutableStateOf(false) }
+    // Set right before deep-linking out to the system's Usage Access settings screen, so that
+    // when the user comes back, detection can retry automatically once instead of making them
+    // tap "Detect" a second time.
+    var awaitingUsageAccessGrant by remember { mutableStateOf(false) }
+
+    fun runSleepDetection() {
+        val result = BedtimeDetector.detectLongestScreenOffPeriod(context)
+        sleepDetection = result
+        when (result) {
+            is BedtimeDetector.Result.Detected -> {
+                startMillis = result.startEpochMillis
+                endMillis = result.endEpochMillis
+            }
+            BedtimeDetector.Result.PermissionRequired -> {
+                awaitingUsageAccessGrant = true
+                showUsageAccessDialog = true
+            }
+            BedtimeDetector.Result.Unavailable -> Unit
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && awaitingUsageAccessGrant) {
+                awaitingUsageAccessGrant = false
+                if (BedtimeDetector.hasUsageAccess(context)) {
+                    runSleepDetection()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.padding(24.dp).padding(bottom = 24.dp)) {
             Text(
@@ -453,9 +553,42 @@ internal fun SessionEditorSheet(
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            DateTimeFieldRow(label = "Start", epochMillis = startMillis, zoneId = zone, onChange = { startMillis = it })
+            DateTimeFieldRow(
+                label = "Start",
+                epochMillis = startMillis,
+                zoneId = zone,
+                onChange = { startMillis = it }
+            )
             Spacer(modifier = Modifier.height(12.dp))
-            DateTimeFieldRow(label = "End", epochMillis = endMillis, zoneId = zone, onChange = { endMillis = it })
+            DateTimeFieldRow(
+                label = "End",
+                epochMillis = endMillis,
+                zoneId = zone,
+                onChange = { endMillis = it }
+            )
+
+            // Only offered for brand-new entries - inferring "when did you sleep" from recent
+            // screen activity only makes sense relative to *now*, not when backfilling or
+            // correcting an entry from another night.
+            if (initial == null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                FilledTonalButton(
+                    onClick = {
+                        if (BedtimeDetector.hasUsageAccess(context)) {
+                            runSleepDetection()
+                        } else {
+                            awaitingUsageAccessGrant = true
+                            showUsageAccessDialog = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Bedtime, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Detect longest screen-off time")
+                }
+                DetectionCaption(detection = sleepDetection, zone = zone)
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
             Text("Mood", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -539,5 +672,36 @@ internal fun SessionEditorSheet(
                 Text("Save")
             }
         }
+    }
+
+    if (showUsageAccessDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showUsageAccessDialog = false
+                awaitingUsageAccessGrant = false
+            },
+            icon = { Icon(Icons.Filled.Bedtime, contentDescription = null) },
+            title = { Text("Allow usage access?") },
+            text = {
+                Text(
+                    "SleepTracker can estimate your sleep period from the longest stretch your " +
+                        "screen stayed off. That needs Usage Access, which Android only lets " +
+                        "you grant from Settings - SleepTracker only reads the timing of that, " +
+                        "never which apps you used, and nothing leaves your device."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showUsageAccessDialog = false
+                    BedtimeDetector.openUsageAccessSettings(context)
+                }) { Text("Open Settings") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showUsageAccessDialog = false
+                    awaitingUsageAccessGrant = false
+                }) { Text("Not now") }
+            }
+        )
     }
 }

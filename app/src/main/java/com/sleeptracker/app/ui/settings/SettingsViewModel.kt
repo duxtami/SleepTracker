@@ -10,6 +10,7 @@ import com.sleeptracker.app.data.model.ColorStyle
 import com.sleeptracker.app.data.model.ThemeMode
 import com.sleeptracker.app.data.repository.SleepRepository
 import com.sleeptracker.app.util.BackupManager
+import com.sleeptracker.app.util.BedtimeReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,17 +42,29 @@ class SettingsViewModel(
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { settingsRepository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { settingsRepository.setDynamicColor(enabled) }
     fun setColorStyle(style: ColorStyle) = viewModelScope.launch { settingsRepository.setColorStyle(style) }
-    fun setFontScale(scale: Float) = viewModelScope.launch { settingsRepository.setFontScale(scale) }
+
+    // --- Application font ---
+    fun setUseApplicationFont(enabled: Boolean) = viewModelScope.launch { settingsRepository.setUseApplicationFont(enabled) }
+    fun setFontWeightAxis(value: Float) = viewModelScope.launch { settingsRepository.setFontWeightAxis(value) }
+    fun setFontWidthAxis(value: Float) = viewModelScope.launch { settingsRepository.setFontWidthAxis(value) }
+    fun setFontRoundnessAxis(value: Float) = viewModelScope.launch { settingsRepository.setFontRoundnessAxis(value) }
+
+    // --- Sleep Schedule ---
+    fun setScheduleBedtime(hour: Int, minute: Int) = viewModelScope.launch { settingsRepository.setScheduleBedtime(hour, minute) }
+    fun setScheduleWakeTime(hour: Int, minute: Int) = viewModelScope.launch { settingsRepository.setScheduleWakeTime(hour, minute) }
 
     // --- Tracking ---
-    fun setSleepGoalMinutes(minutes: Int) = viewModelScope.launch { settingsRepository.setSleepGoalMinutes(minutes) }
     fun setStartDelayMinutes(minutes: Int) = viewModelScope.launch { settingsRepository.setStartDelayMinutes(minutes) }
 
     // --- Reminders ---
-    fun setBedtimeReminderEnabled(enabled: Boolean) = viewModelScope.launch { settingsRepository.setBedtimeReminderEnabled(enabled) }
-    fun setBedtimeReminderTime(hour: Int, minute: Int) = viewModelScope.launch { settingsRepository.setBedtimeReminderTime(hour, minute) }
-    fun setWakeReminderEnabled(enabled: Boolean) = viewModelScope.launch { settingsRepository.setWakeReminderEnabled(enabled) }
-    fun setWakeReminderTime(hour: Int, minute: Int) = viewModelScope.launch { settingsRepository.setWakeReminderTime(hour, minute) }
+    fun setBedtimeReminderEnabled(context: Context, enabled: Boolean) = viewModelScope.launch {
+        settingsRepository.setBedtimeReminderEnabled(enabled)
+        BedtimeReminderScheduler.rescheduleFromSettings(context)
+    }
+    fun setBedtimeReminderTime(context: Context, hour: Int, minute: Int) = viewModelScope.launch {
+        settingsRepository.setBedtimeReminderTime(hour, minute)
+        BedtimeReminderScheduler.rescheduleFromSettings(context)
+    }
 
     // --- History ---
     fun setShowAwakeDuration(enabled: Boolean) = viewModelScope.launch { settingsRepository.setShowAwakeDuration(enabled) }

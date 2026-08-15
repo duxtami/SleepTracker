@@ -121,9 +121,26 @@ class SleepRepository(
         sessionDao.delete(session.toEntity())
     }
 
-    /** Re-inserts a previously deleted session as a new row - used to power the Timeline undo-delete Snackbar. */
+    /**
+     * Re-inserts a previously deleted session, powering the Timeline's undo-delete Snackbar.
+     * Crucially, this preserves the session's *original* id rather than generating a new one:
+     * deleting a session does not cascade-delete its associated journal notes (so Undo can bring
+     * them back), and those notes are keyed by sessionId. Re-inserting with a fresh id would
+     * silently orphan them - they'd remain in the database pointing at an id that no longer
+     * exists on any visible session.
+     */
     suspend fun restoreSession(session: SleepSession) {
-        sessionDao.insert(session.copy(id = 0L).toEntity())
+        sessionDao.insert(session.toEntity())
+    }
+
+    /**
+     * Called once a delete is truly final (the undo Snackbar was dismissed or timed out without
+     * the user tapping Undo) to clean up the journal notes that [deleteSession] intentionally
+     * left behind for a possible restore. Safe to call even if the session was already restored
+     * elsewhere, since it only targets the given id's now-orphaned notes.
+     */
+    suspend fun purgeNotesForSession(sessionId: Long) {
+        noteDao.deleteForSession(sessionId)
     }
 
     suspend fun addNote(sessionId: Long, text: String) {
