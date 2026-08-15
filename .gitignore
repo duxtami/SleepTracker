@@ -39,3 +39,7 @@ setup.jar
 *.apk
 *.ap_
 *.aab
+
+# Keystore and credentials
+release.jks
+keystore-credentials.txt
