@@ -22,7 +22,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -40,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -74,10 +72,8 @@ fun FloatingNavBar(
         tonalElevation = 3.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             destinations.forEach { destination ->
@@ -93,10 +89,7 @@ fun FloatingNavBar(
 
 @Composable
 private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -> Unit) {
-    // Only the selected destination gets a filled pill. Unselected destinations render as bare
-    // icon buttons with no background at all - so they read as plain floating icons against the
-    // bar, rather than as inactive pills of their own.
-    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
+    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
     val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
     // Smooth color cross-fade on selection instead of an abrupt swap.
@@ -131,7 +124,7 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
             .background(background)
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
             .heightIn(min = 48.dp)
-            .padding(horizontal = if (isSelected) 22.dp else 12.dp, vertical = 12.dp)
+            .padding(horizontal = if (isSelected) 20.dp else 16.dp, vertical = 12.dp)
             .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -165,8 +158,8 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
             Text(
                 text = destination.label,
                 color = contentColor,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge
             )
         }
     }
