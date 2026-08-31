@@ -24,6 +24,8 @@ By combining robust technical foundations with a carefully crafted user interfac
 
 ## Screenshots
 
+## Screenshots
+
 <table>
 <tr>
 <td align="center">
@@ -84,7 +86,7 @@ The architecture reflects the latest recommended Android development standards:
 
 ### Clone
 ```bash
-git clone https://github.com/duxtami/SleepTracker.git
+git clone https://github.com/your-username/SleepTracker.git
 ```
 
 ### Build with Android Studio

@@ -50,6 +50,21 @@ fun SleepTrackerNavGraph(container: AppContainer) {
     val currentDestination = Destination.entries.firstOrNull { it.route == currentRoute } ?: Destination.SLEEP
     val showNav = currentRoute == null || Destination.entries.any { it.route == currentRoute }
 
+    // Only these 3 ever appear as tabs in the main nav pill. Settings/Add is handled entirely by
+    // the separate trailing action button instead - see FloatingNavBar's NavTrailingAction.
+    val mainDestinations = remember { listOf(Destination.SLEEP, Destination.TIMELINE, Destination.INSIGHTS) }
+    val mainSelected = if (currentDestination in mainDestinations) currentDestination else null
+    val trailingAction = if (currentDestination == Destination.TIMELINE) {
+        NavTrailingAction.ADD_ENTRY
+    } else {
+        NavTrailingAction.SETTINGS
+    }
+
+    // Bumped to signal TimelineScreen to open its "Add sleep entry" sheet when the trailing nav
+    // button is tapped while already on the Timeline tab - see the LaunchedEffect keyed on this
+    // in TimelineScreen.
+    var timelineAddTrigger by remember { mutableStateOf(0) }
+
     val density = LocalDensity.current
     var navBarHeight by remember { mutableStateOf(0.dp) }
     // Exactly the distance from the screen's bottom edge to the TOP of the nav bar - i.e. the
@@ -82,7 +97,8 @@ fun SleepTrackerNavGraph(container: AppContainer) {
                     )
                     TimelineScreen(
                         viewModel = vm,
-                        onOpenDetails = { id -> navController.navigate("session_details/$id") }
+                        onOpenDetails = { id -> navController.navigate("session_details/$id") },
+                        addRequestTrigger = timelineAddTrigger
                     )
                 }
                 composable(Destination.INSIGHTS.route) {
@@ -112,8 +128,8 @@ fun SleepTrackerNavGraph(container: AppContainer) {
 
         if (showNav) {
             FloatingNavBar(
-                destinations = Destination.entries,
-                selected = currentDestination,
+                destinations = mainDestinations,
+                selected = mainSelected,
                 onSelect = { destination ->
                     if (destination.route != currentRoute) {
                         navController.navigate(destination.route) {
@@ -123,6 +139,23 @@ fun SleepTrackerNavGraph(container: AppContainer) {
                         }
                     }
                 },
+                trailingAction = trailingAction,
+                onTrailingClick = {
+                    when (trailingAction) {
+                        NavTrailingAction.ADD_ENTRY -> timelineAddTrigger++
+                        NavTrailingAction.SETTINGS -> {
+                            if (currentRoute != Destination.SETTINGS.route) {
+                                navController.navigate(Destination.SETTINGS.route) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        }
+                    }
+                },
+                isSettingsActive = currentDestination == Destination.SETTINGS,
+                onBack = { navController.popBackStack() },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = NavBarBottomOffset)

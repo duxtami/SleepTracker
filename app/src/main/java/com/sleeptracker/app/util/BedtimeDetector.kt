@@ -33,6 +33,12 @@ object BedtimeDetector {
      *  it won't reach back into the *previous* night as well. */
     private val LOOKBACK = TimeUnit.HOURS.toMillis(30)
 
+    /** Window and minimum duration used by [findRecentScreenOffPeriods] - a wider, unfiltered
+     *  view alongside the single best guess above, so the user can pick manually if the "longest"
+     *  pick wasn't actually last night's sleep. */
+    private val RECENT_PERIODS_LOOKBACK = TimeUnit.HOURS.toMillis(24)
+    private val RECENT_PERIODS_MIN_DURATION = TimeUnit.HOURS.toMillis(1)
+
     sealed class Result {
         /** The longest screen-off stretch found in the window. [source] describes how reliable
          *  the underlying signal is. */
@@ -56,6 +62,9 @@ object BedtimeDetector {
          *  wasn't touched" than explicit screen events. */
         APP_INACTIVITY_GAP
     }
+
+    /** A single screen-off stretch, as returned by [findRecentScreenOffPeriods]. */
+    data class ScreenOffPeriod(val startEpochMillis: Long, val endEpochMillis: Long)
 
     /** Whether the special Usage Access app-op is currently granted to this app. */
     fun hasUsageAccess(context: Context): Boolean {
@@ -83,6 +92,56 @@ object BedtimeDetector {
             runCatching { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
         }
     }
+
+    /**
+     * Every screen-off stretch of at least [RECENT_PERIODS_MIN_DURATION] found within the last
+     * [RECENT_PERIODS_LOOKBACK], newest first. Unlike [detectLongestScreenOffPeriod], this
+     * doesn't try to pick "the" sleep period - it surfaces every long off-stretch (naps, an
+     * evening away from the phone, last night's actual sleep, etc.) so the user can pick the
+     * right one manually when the single best-guess detection picks the wrong stretch. Requires
+     * Usage Access (see [hasUsageAccess]) and, like the rest of this object, only reads real
+     * on-device signals - an empty list means none were found, never a guess.
+     */
+    fun findRecentScreenOffPeriods(context: Context): List<ScreenOffPeriod> {
+        if (!hasUsageAccess(context)) return emptyList()
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            ?: return emptyList()
+
+        val now = System.currentTimeMillis()
+        val windowStart = now - RECENT_PERIODS_LOOKBACK
+
+        val events = runCatching { usageStatsManager.queryEvents(windowStart, now) }.getOrNull()
+            ?: return emptyList()
+        val event = UsageEvents.Event()
+
+        val periods = mutableListOf<ScreenOffPeriod>()
+        var screenOffAt: Long? = null
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> screenOffAt = event.timeStamp
+                UsageEvents.Event.SCREEN_INTERACTIVE -> {
+                    val offAt = screenOffAt
+                    if (offAt != null) {
+                        if (event.timeStamp - offAt >= RECENT_PERIODS_MIN_DURATION) {
+                            periods += ScreenOffPeriod(offAt, event.timeStamp)
+                        }
+                        screenOffAt = null
+                    }
+                }
+            }
+        }
+        // Screen is still off right now - include that trailing, still-ongoing stretch too.
+        screenOffAt?.let { offAt ->
+            if (now - offAt >= RECENT_PERIODS_MIN_DURATION) {
+                periods += ScreenOffPeriod(offAt, now)
+            }
+        }
+
+        return periods.sortedByDescending { it.startEpochMillis }
+    }
+
 
     /**
      * Finds the single longest continuous screen-off stretch within [LOOKBACK] of now. Never

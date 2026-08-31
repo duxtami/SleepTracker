@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -42,7 +41,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -61,6 +59,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,7 +90,12 @@ import java.time.ZoneId
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, modifier: Modifier = Modifier) {
+fun TimelineScreen(
+    viewModel: TimelineViewModel,
+    onOpenDetails: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    addRequestTrigger: Int = 0
+) {
     val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -101,6 +105,18 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
     val expandedMonths = remember { mutableStateOf(setOf(TimeUtils.monthKey(System.currentTimeMillis()))) }
     var selectionMode by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<Long>()) }
+
+    // Lets the floating nav bar's trailing "+" button (only shown while this tab is active) open
+    // the same Add sheet as the FAB below, without this screen needing to know anything about
+    // the nav bar itself. Guarded so the initial default value of 0 never opens the sheet on
+    // first composition - only a genuine increment from outside does.
+    var lastHandledAddTrigger by remember { mutableStateOf(addRequestTrigger) }
+    LaunchedEffect(addRequestTrigger) {
+        if (addRequestTrigger != lastHandledAddTrigger) {
+            lastHandledAddTrigger = addRequestTrigger
+            showAddSheet = true
+        }
+    }
 
     fun exitSelectionMode() {
         selectionMode = false
@@ -226,8 +242,8 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
                                     session = session,
                                     selectionMode = selectionMode,
                                     isSelected = selectedIds.contains(session.id),
-                                    modifier = Modifier.animateItemPlacement(
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
+                                    modifier = Modifier.animateItem(
+                                        placementSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
                                     ),
                                     onTap = {
                                         if (selectionMode) {
@@ -254,30 +270,20 @@ fun TimelineScreen(viewModel: TimelineViewModel, onOpenDetails: (Long) -> Unit, 
         }
         }
 
-        // A standard FAB is 56dp; this is the actual token M3 uses, not a guess - see
-        // FloatingActionButtonDefaults in Material3, which sizes the default FAB at 56.dp.
-        val fabEndPadding = 28.dp
-        val fabBottomGap = 8.dp
-
-        if (!selectionMode) {
-            FloatingActionButton(
-                onClick = { showAddSheet = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = fabEndPadding, bottom = bottomBarSpace + fabBottomGap)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add sleep entry")
-            }
-        }
+        // The floating nav bar's own trailing "+" button now covers this (see FloatingNavBar's
+        // NavTrailingAction.ADD_ENTRY) whenever this tab is active, so this screen no longer
+        // renders its own separate FAB for the same action - having both showed two overlapping
+        // "+" buttons at once.
 
         // ExpressiveSnackbar is now a compact, content-hugging pill (not a full-width bar), so
-        // at the same low height as the FAB it naturally clears it for any realistically short
-        // message without needing an asymmetric width/end-padding workaround.
+        // at the same low height as where the FAB used to sit, it naturally clears the nav bar
+        // for any realistically short message without needing an asymmetric width/end-padding
+        // workaround.
         ExpressiveSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = bottomBarSpace + fabBottomGap)
+                .padding(bottom = bottomBarSpace + 8.dp)
         )
     }
 
@@ -509,6 +515,8 @@ internal fun SessionEditorSheet(
     val context = LocalContext.current
     var sleepDetection by remember(initial) { mutableStateOf<BedtimeDetector.Result?>(null) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
+    var showRecentPeriodsDialog by remember { mutableStateOf(false) }
+    var recentPeriods by remember(initial) { mutableStateOf<List<BedtimeDetector.ScreenOffPeriod>>(emptyList()) }
     // Set right before deep-linking out to the system's Usage Access settings screen, so that
     // when the user comes back, detection can retry automatically once instead of making them
     // tap "Detect" a second time.
@@ -572,20 +580,40 @@ internal fun SessionEditorSheet(
             // correcting an entry from another night.
             if (initial == null) {
                 Spacer(modifier = Modifier.height(16.dp))
-                FilledTonalButton(
-                    onClick = {
-                        if (BedtimeDetector.hasUsageAccess(context)) {
-                            runSleepDetection()
-                        } else {
-                            awaitingUsageAccessGrant = true
-                            showUsageAccessDialog = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Filled.Bedtime, contentDescription = null, modifier = Modifier.size(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    FilledTonalButton(
+                        onClick = {
+                            if (BedtimeDetector.hasUsageAccess(context)) {
+                                runSleepDetection()
+                            } else {
+                                awaitingUsageAccessGrant = true
+                                showUsageAccessDialog = true
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Filled.Bedtime, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Detect longest screen-off time")
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Detect longest screen-off time")
+                    // Small, secondary escape hatch next to the main detect action: lets the
+                    // user pick manually from every long screen-off stretch in the last 24h,
+                    // in case the single "longest" guess above picked the wrong one (e.g. an
+                    // evening away from the phone rather than actual sleep).
+                    TextButton(
+                        onClick = {
+                            if (BedtimeDetector.hasUsageAccess(context)) {
+                                recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context)
+                                showRecentPeriodsDialog = true
+                            } else {
+                                awaitingUsageAccessGrant = true
+                                showUsageAccessDialog = true
+                            }
+                        }
+                    ) {
+                        Text("View recent")
+                    }
                 }
                 DetectionCaption(detection = sleepDetection, zone = zone)
             }
@@ -701,6 +729,62 @@ internal fun SessionEditorSheet(
                     showUsageAccessDialog = false
                     awaitingUsageAccessGrant = false
                 }) { Text("Not now") }
+            }
+        )
+    }
+
+    if (showRecentPeriodsDialog) {
+        AlertDialog(
+            onDismissRequest = { showRecentPeriodsDialog = false },
+            icon = { Icon(Icons.Filled.Bedtime, contentDescription = null) },
+            title = { Text("Recent screen-off periods") },
+            text = {
+                if (recentPeriods.isEmpty()) {
+                    Text(
+                        "No screen-off stretches of an hour or longer were found in the last 24 hours.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    // Capped so the dialog never grows past a comfortable scroll height even on
+                    // a day with many long off-stretches.
+                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                        items(recentPeriods) { period ->
+                            val durationLabel = TimeUtils.formatDurationShort(period.endEpochMillis - period.startEpochMillis)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(MaterialTheme.shapes.small)
+                                    .clickable {
+                                        startMillis = period.startEpochMillis
+                                        endMillis = period.endEpochMillis
+                                        sleepDetection = null
+                                        showRecentPeriodsDialog = false
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp)
+                            ) {
+                                Text(
+                                    TimeUtils.formatDate(period.startEpochMillis, zone.id),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "${TimeUtils.formatTime(period.startEpochMillis, zone.id)} \u2192 " +
+                                        TimeUtils.formatTime(period.endEpochMillis, zone.id),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    durationLabel,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showRecentPeriodsDialog = false }) { Text("Close") }
             }
         )
     }
