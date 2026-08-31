@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,13 +49,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.sleeptracker.app.ui.theme.FloatingNavShape
+import com.sleeptracker.app.ui.theme.PillShape
 
 /**
  * What the trailing FAB-style button next to the main pill currently does. It's a single
  * contextual action, not a 4th destination - its meaning changes with which tab is active rather
  * than being a fixed destination the way Sleep/Timeline/Insights are.
  */
+
+private val EmphasizedEasing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
+private val EmphasizedDecelerateEasing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)
+private val EmphasizedAccelerateEasing = CubicBezierEasing(0.3f, 0.0f, 0.8f, 0.15f)
+
+private const val SHORT2 = 100
+private const val SHORT3 = 150
+private const val SHORT4 = 200
+private const val MEDIUM1 = 250
+private const val MEDIUM2 = 300
+private const val LONG1 = 450
+
 enum class NavTrailingAction {
     /** Jumps to the Settings screen - the default action everywhere except the Timeline tab. */
     SETTINGS,
@@ -101,10 +114,8 @@ fun FloatingNavBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = FloatingNavShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 6.dp,
-            tonalElevation = 3.dp
+            shape = PillShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest
         ) {
             // On the Settings screen, the main pill shows 2 items instead of the 3 destination
             // tabs: a plain back arrow (left, active - takes you back to the app) and a settings
@@ -170,8 +181,8 @@ private fun GenericNavPill(
 ) {
     val targetBackground = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-    val background by animateColorAsState(targetBackground, tween(220), label = "genericNavPillBackground")
-    val contentColor by animateColorAsState(targetContentColor, tween(220), label = "genericNavPillContent")
+    val background by animateColorAsState(targetBackground, tween(SHORT4, easing = EmphasizedEasing), label = "genericNavPillBackground")
+    val contentColor by animateColorAsState(targetContentColor, tween(SHORT4, easing = EmphasizedEasing), label = "genericNavPillContent")
 
     val interactionSource = remember { MutableInteractionSource() }
     var pressed by remember { mutableStateOf(false) }
@@ -185,7 +196,7 @@ private fun GenericNavPill(
     }
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = tween(MEDIUM2, easing = EmphasizedEasing),
         label = "genericNavPillPressScale"
     )
 
@@ -200,19 +211,19 @@ private fun GenericNavPill(
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
             .heightIn(min = 46.dp)
             .padding(horizontal = if (isSelected) 18.dp else 12.dp, vertical = 11.dp)
-            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
+            .animateContentSize(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Icon(imageVector = icon, contentDescription = if (isSelected) null else contentDescription, tint = contentColor, modifier = Modifier.size(22.dp))
         AnimatedVisibility(
             visible = isSelected,
-            enter = fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) +
-                expandHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), expandFrom = Alignment.Start) +
-                scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)),
-            exit = fadeOut(animationSpec = tween(120)) +
-                shrinkHorizontally(animationSpec = tween(150), shrinkTowards = Alignment.Start) +
-                scaleOut(targetScale = 0.8f, animationSpec = tween(120))
+            enter = fadeIn(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)) +
+                expandHorizontally(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing), expandFrom = Alignment.Start) +
+                scaleIn(initialScale = 0.8f, animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)),
+            exit = fadeOut(animationSpec = tween(SHORT2, easing = EmphasizedAccelerateEasing)) +
+                shrinkHorizontally(animationSpec = tween(SHORT3, easing = EmphasizedAccelerateEasing), shrinkTowards = Alignment.Start) +
+                scaleOut(targetScale = 0.8f, animationSpec = tween(SHORT2, easing = EmphasizedAccelerateEasing))
         ) {
             Text(text = label, color = contentColor, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
         }
@@ -243,7 +254,7 @@ private fun TrailingActionButton(action: NavTrailingAction, onClick: () -> Unit)
     }
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = tween(MEDIUM2, easing = EmphasizedEasing),
         label = "trailingActionPressScale"
     )
 
@@ -255,13 +266,12 @@ private fun TrailingActionButton(action: NavTrailingAction, onClick: () -> Unit)
                 scaleY = pressScale
             }
             .size(56.dp),
-        shape = FloatingNavShape,
+        shape = PillShape,
         // Deliberately the SAME tokens as a pill's selected state below (primaryContainer /
         // onPrimaryContainer) - not an independently-chosen accent - so this button reads as
         // part of the same design family as the main pill instead of clashing with it.
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shadowElevation = 6.dp,
         interactionSource = interactionSource
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -283,8 +293,8 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
     val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
     // Smooth color cross-fade on selection instead of an abrupt swap.
-    val background by animateColorAsState(targetBackground, tween(220), label = "navPillBackground")
-    val contentColor by animateColorAsState(targetContentColor, tween(220), label = "navPillContent")
+    val background by animateColorAsState(targetBackground, tween(SHORT4, easing = EmphasizedEasing), label = "navPillBackground")
+    val contentColor by animateColorAsState(targetContentColor, tween(SHORT4, easing = EmphasizedEasing), label = "navPillContent")
 
     // A brief, tactile shrink-on-press rather than relying on the ripple alone for pressed
     // feedback - a small, springy scale reads as more "Expressive" and fluid.
@@ -300,7 +310,7 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
     }
     val pressScale by animateFloatAsState(
         targetValue = if (pressed) 0.92f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = tween(MEDIUM2, easing = EmphasizedEasing),
         label = "navPillPressScale"
     )
 
@@ -315,7 +325,7 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
             .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
             .heightIn(min = 46.dp)
             .padding(horizontal = if (isSelected) 18.dp else 12.dp, vertical = 11.dp)
-            .animateContentSize(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
+            .animateContentSize(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -324,8 +334,8 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
         AnimatedContent(
             targetState = isSelected,
             transitionSpec = {
-                (fadeIn(tween(180)) + scaleIn(initialScale = 0.7f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)))
-                    .togetherWith(fadeOut(tween(120)) + scaleOut(targetScale = 0.7f, animationSpec = tween(120)))
+                (fadeIn(tween(SHORT3, easing = EmphasizedDecelerateEasing)) + scaleIn(initialScale = 0.7f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)))
+                    .togetherWith(fadeOut(tween(SHORT2, easing = EmphasizedAccelerateEasing)) + scaleOut(targetScale = 0.7f, animationSpec = tween(SHORT2, easing = EmphasizedAccelerateEasing)))
             },
             label = "navPillIcon"
         ) { isSelectedState ->
@@ -338,12 +348,12 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
         }
         AnimatedVisibility(
             visible = isSelected,
-            enter = fadeIn(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)) +
-                expandHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium), expandFrom = Alignment.Start) +
-                scaleIn(initialScale = 0.8f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)),
-            exit = fadeOut(animationSpec = tween(120)) +
-                shrinkHorizontally(animationSpec = tween(150), shrinkTowards = Alignment.Start) +
-                scaleOut(targetScale = 0.8f, animationSpec = tween(120))
+            enter = fadeIn(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)) +
+                expandHorizontally(animationSpec = tween(MEDIUM2, easing = EmphasizedEasing), expandFrom = Alignment.Start) +
+                scaleIn(initialScale = 0.8f, animationSpec = tween(MEDIUM2, easing = EmphasizedEasing)),
+            exit = fadeOut(animationSpec = tween(SHORT2, easing = EmphasizedAccelerateEasing)) +
+                shrinkHorizontally(animationSpec = tween(SHORT3, easing = EmphasizedAccelerateEasing), shrinkTowards = Alignment.Start) +
+                scaleOut(targetScale = 0.8f, animationSpec = tween(SHORT2, easing = EmphasizedAccelerateEasing))
         ) {
             Text(
                 text = destination.label,

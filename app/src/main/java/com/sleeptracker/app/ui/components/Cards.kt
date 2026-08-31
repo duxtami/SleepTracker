@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.sleeptracker.app.ui.theme.CardShape
+
 
 /** The standard large expressive surface used for every major content block. */
 @Composable
@@ -30,7 +30,7 @@ fun ExpressiveCard(
         Card(
             onClick = onClick,
             modifier = modifier.fillMaxWidth(),
-            shape = CardShape,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = containerColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
@@ -39,7 +39,7 @@ fun ExpressiveCard(
     } else {
         Card(
             modifier = modifier.fillMaxWidth(),
-            shape = CardShape,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = containerColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {

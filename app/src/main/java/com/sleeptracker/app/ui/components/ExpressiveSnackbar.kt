@@ -39,7 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.sleeptracker.app.ui.theme.SnackbarShape
+
 
 /**
  * Material 3 Expressive replacement for the stock [androidx.compose.material3.SnackbarHost].
@@ -101,7 +101,7 @@ private fun ExpressiveSnackbar(data: SnackbarData) {
         modifier = Modifier
             .padding(horizontal = 24.dp)
             .widthIn(max = 420.dp),
-        shape = SnackbarShape,
+        shape = MaterialTheme.shapes.extraLarge,
         // Previously inverseSurface/inverseOnSurface - the classic "toast" Snackbar look,
         // which is deliberately the *opposite* tone of the current theme (a light card in dark
         // mode, a dark card in light mode). That's normally intentional Material 3 spec
@@ -112,8 +112,6 @@ private fun ExpressiveSnackbar(data: SnackbarData) {
         // else instead of standing apart from it.
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 6.dp,
-        tonalElevation = 4.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Row(

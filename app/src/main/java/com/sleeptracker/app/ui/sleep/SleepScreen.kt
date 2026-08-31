@@ -212,10 +212,9 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                         progress = { state.goalProgress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(12.dp)
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50)),
+                            .height(4.dp),
                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round,
-                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(

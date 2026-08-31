@@ -149,7 +149,7 @@ fun SleepOrb(
         Text(
             text = if (isActive) "Tap to end" else "Tap to sleep",
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onPrimary
         )
     }
 }

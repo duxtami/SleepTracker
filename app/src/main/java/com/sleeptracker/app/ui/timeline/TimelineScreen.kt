@@ -82,7 +82,7 @@ import com.sleeptracker.app.data.model.SleepSession
 import com.sleeptracker.app.ui.components.DateTimeFieldRow
 import com.sleeptracker.app.ui.components.ExpressiveSnackbarHost
 import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
-import com.sleeptracker.app.ui.theme.CardShape
+
 import com.sleeptracker.app.util.BedtimeDetector
 import com.sleeptracker.app.util.TimeUtils
 import kotlinx.coroutines.launch
@@ -324,7 +324,7 @@ private fun SessionCard(
 ) {
     if (selectionMode) {
         Card(
-            shape = CardShape,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
                 containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
             ),
@@ -363,7 +363,7 @@ private fun SessionCard(
                     .fillMaxSize()
                     .background(
                         if (isEditSide) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
-                        CardShape
+                        MaterialTheme.shapes.extraLarge
                     )
                     .padding(horizontal = 24.dp),
                 contentAlignment = if (isEditSide) Alignment.CenterStart else Alignment.CenterEnd
@@ -377,7 +377,7 @@ private fun SessionCard(
         }
     ) {
         Card(
-            shape = CardShape,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             modifier = Modifier
                 .fillMaxWidth()
