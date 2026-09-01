@@ -24,7 +24,9 @@ enum class InsightsRange(val label: String, val days: Long?) {
 data class InsightsUiState(
     val range: InsightsRange = InsightsRange.WEEKLY,
     val insights: SleepInsights = SleepInsights(0, 0, 0, 0, 0, 0, 0, null, null, 0),
+    val previousInsights: SleepInsights? = null,
     val dailyTotals: Map<String, Long> = emptyMap(),
+    val hasEnoughData: Boolean = false,
     val sleepGoalMinutes: Int = 480
 )
 
@@ -41,11 +43,21 @@ class InsightsViewModel(
         _range
     ) { sessions, settings, range ->
         val cutoff = range.days?.let { Instant.now().minus(it, ChronoUnit.DAYS).toEpochMilli() }
+        val prevCutoff = range.days?.let { Instant.now().minus(it * 2, ChronoUnit.DAYS).toEpochMilli() }
+        
         val scoped = if (cutoff != null) sessions.filter { it.startEpochMillis >= cutoff } else sessions
+        val previousScoped = if (cutoff != null && prevCutoff != null) {
+            sessions.filter { it.startEpochMillis in prevCutoff until cutoff }
+        } else null
+
+        val hasEnoughData = scoped.isNotEmpty()
+
         InsightsUiState(
             range = range,
             insights = SleepCalculator.computeInsights(scoped, settings.sleepGoalMinutes),
+            previousInsights = previousScoped?.let { SleepCalculator.computeInsights(it, settings.sleepGoalMinutes) },
             dailyTotals = SleepCalculator.dailyTotals(scoped),
+            hasEnoughData = hasEnoughData,
             sleepGoalMinutes = settings.sleepGoalMinutes
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), InsightsUiState())

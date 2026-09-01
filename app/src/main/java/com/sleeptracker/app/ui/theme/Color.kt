@@ -8,6 +8,8 @@ val SeedTeal = Color(0xFF00696C)
 val SeedSunset = Color(0xFFA6420A)
 val SeedForest = Color(0xFF3C6C34)
 val SeedRose = Color(0xFFB01458)
+val SeedOcean = Color(0xFF005AC1)
+val SeedAmber = Color(0xFF795900)
 
 val AmoledBlack = Color(0xFF000000)
 

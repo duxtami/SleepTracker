@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import com.sleeptracker.app.data.datastore.AppSettings
 import java.util.concurrent.TimeUnit
 
 /**
@@ -42,7 +43,7 @@ object BedtimeDetector {
     sealed class Result {
         /** The longest screen-off stretch found in the window. [source] describes how reliable
          *  the underlying signal is. */
-        data class Detected(val startEpochMillis: Long, val endEpochMillis: Long, val source: Source) : Result()
+        data class Detected(val startEpochMillis: Long, val endEpochMillis: Long, val totalPausedMillis: Long, val source: Source) : Result()
 
         /** Usage Access hasn't been granted - nothing was queried yet. */
         data object PermissionRequired : Result()
@@ -64,7 +65,7 @@ object BedtimeDetector {
     }
 
     /** A single screen-off stretch, as returned by [findRecentScreenOffPeriods]. */
-    data class ScreenOffPeriod(val startEpochMillis: Long, val endEpochMillis: Long)
+    data class ScreenOffPeriod(val startEpochMillis: Long, val endEpochMillis: Long, val totalPausedMillis: Long = 0L)
 
     /** Whether the special Usage Access app-op is currently granted to this app. */
     fun hasUsageAccess(context: Context): Boolean {
@@ -102,7 +103,7 @@ object BedtimeDetector {
      * Usage Access (see [hasUsageAccess]) and, like the rest of this object, only reads real
      * on-device signals - an empty list means none were found, never a guess.
      */
-    fun findRecentScreenOffPeriods(context: Context): List<ScreenOffPeriod> {
+    fun findRecentScreenOffPeriods(context: Context, settings: AppSettings, smartAnalyzeEnabled: Boolean = true): List<ScreenOffPeriod> {
         if (!hasUsageAccess(context)) return emptyList()
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
             ?: return emptyList()
@@ -139,7 +140,56 @@ object BedtimeDetector {
             }
         }
 
-        return periods.sortedByDescending { it.startEpochMillis }
+        return if (smartAnalyzeEnabled) {
+            smartAnalyze(periods, settings)
+        } else {
+            periods.sortedByDescending { it.startEpochMillis }
+        }
+    }
+
+    private fun smartAnalyze(rawPeriods: List<ScreenOffPeriod>, settings: AppSettings): List<ScreenOffPeriod> {
+        if (rawPeriods.isEmpty()) return rawPeriods
+        
+        val thresholdMillis = settings.smartAnalyzeThresholdMinutes * 60_000L
+        if (thresholdMillis == 0L) return rawPeriods.sortedByDescending { it.startEpochMillis }
+        
+        val sorted = rawPeriods.sortedBy { it.startEpochMillis }
+        val merged = mutableListOf<ScreenOffPeriod>()
+        var current = sorted.first()
+        
+        for (i in 1 until sorted.size) {
+            val next = sorted[i]
+            val gapMillis = next.startEpochMillis - current.endEpochMillis
+            
+            if (gapMillis > 0 && gapMillis < thresholdMillis) {
+                if (isTimeInSleepWindow(current.endEpochMillis, settings) && isTimeInSleepWindow(next.startEpochMillis, settings)) {
+                    current = current.copy(
+                        endEpochMillis = next.endEpochMillis,
+                        totalPausedMillis = current.totalPausedMillis + next.totalPausedMillis + gapMillis
+                    )
+                    continue
+                }
+            }
+            merged.add(current)
+            current = next
+        }
+        merged.add(current)
+        return merged.sortedByDescending { it.startEpochMillis }
+    }
+
+    private fun isTimeInSleepWindow(millis: Long, settings: AppSettings): Boolean {
+        val calendar = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+        val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+        val minute = calendar.get(java.util.Calendar.MINUTE)
+        val timeInMins = hour * 60 + minute
+        val bedMins = settings.scheduleBedtimeHour * 60 + settings.scheduleBedtimeMinute
+        val wakeMins = settings.scheduleWakeHour * 60 + settings.scheduleWakeMinute
+        
+        return if (bedMins <= wakeMins) {
+            timeInMins in bedMins..wakeMins
+        } else {
+            timeInMins >= bedMins || timeInMins <= wakeMins
+        }
     }
 
 
@@ -148,7 +198,7 @@ object BedtimeDetector {
      * invents a value: returns [Result.PermissionRequired] or [Result.Unavailable] rather than
      * guessing when a real signal can't be found.
      */
-    fun detectLongestScreenOffPeriod(context: Context): Result {
+    fun detectLongestScreenOffPeriod(context: Context, settings: AppSettings, smartAnalyzeEnabled: Boolean = true): Result {
         if (!hasUsageAccess(context)) return Result.PermissionRequired
 
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
@@ -158,9 +208,9 @@ object BedtimeDetector {
         val windowStart = now - LOOKBACK
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val longest = longestScreenOffSpan(usageStatsManager, windowStart, now)
+            val longest = longestScreenOffSpan(usageStatsManager, windowStart, now, settings, smartAnalyzeEnabled)
             if (longest != null) {
-                return Result.Detected(longest.first, longest.second, Source.SCREEN_EVENTS)
+                return Result.Detected(longest.startEpochMillis, longest.endEpochMillis, longest.totalPausedMillis, Source.SCREEN_EVENTS)
             }
         }
 
@@ -169,7 +219,7 @@ object BedtimeDetector {
         // above doesn't exist at all.
         val longestGap = longestInactivityGap(usageStatsManager, windowStart, now)
         return if (longestGap != null) {
-            Result.Detected(longestGap.first, longestGap.second, Source.APP_INACTIVITY_GAP)
+            Result.Detected(longestGap.startEpochMillis, longestGap.endEpochMillis, longestGap.totalPausedMillis, Source.APP_INACTIVITY_GAP)
         } else {
             Result.Unavailable
         }
@@ -179,20 +229,12 @@ object BedtimeDetector {
      *  with the next SCREEN_INTERACTIVE after it, and keeps whichever pair spans the longest
      *  duration. If the screen is still off at [end] (the window closes mid-sleep), that stretch
      *  is measured up to [end] so a currently-ongoing sleep period can still be picked up. */
-    private fun longestScreenOffSpan(usageStatsManager: UsageStatsManager, start: Long, end: Long): Pair<Long, Long>? {
+    private fun longestScreenOffSpan(usageStatsManager: UsageStatsManager, start: Long, end: Long, settings: AppSettings, smartAnalyzeEnabled: Boolean): ScreenOffPeriod? {
         val events = runCatching { usageStatsManager.queryEvents(start, end) }.getOrNull() ?: return null
         val event = UsageEvents.Event()
 
         var screenOffAt: Long? = null
-        var bestStart: Long? = null
-        var bestEnd: Long? = null
-
-        fun considerSpan(spanStart: Long, spanEnd: Long) {
-            if (bestStart == null || (spanEnd - spanStart) > (bestEnd!! - bestStart!!)) {
-                bestStart = spanStart
-                bestEnd = spanEnd
-            }
-        }
+        val periods = mutableListOf<ScreenOffPeriod>()
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
@@ -201,24 +243,29 @@ object BedtimeDetector {
                 UsageEvents.Event.SCREEN_INTERACTIVE -> {
                     val offAt = screenOffAt
                     if (offAt != null) {
-                        considerSpan(offAt, event.timeStamp)
+                        periods.add(ScreenOffPeriod(offAt, event.timeStamp))
                         screenOffAt = null
                     }
                 }
             }
         }
-        // Screen was still off when the window closed - count that trailing stretch too, since
-        // it's very plausibly "still asleep right now."
-        screenOffAt?.let { considerSpan(it, end) }
+        screenOffAt?.let { periods.add(ScreenOffPeriod(it, end)) }
 
-        val finalStart = bestStart ?: return null
-        val finalEnd = bestEnd ?: return null
-        return finalStart to finalEnd
+        if (periods.isEmpty()) return null
+
+        val analyzed = if (smartAnalyzeEnabled) {
+            smartAnalyze(periods, settings)
+        } else {
+            periods
+        }
+
+        val longest = analyzed.maxByOrNull { it.endEpochMillis - it.startEpochMillis - it.totalPausedMillis }
+        return longest
     }
 
     /** Fallback for pre-API 28 devices: the longest stretch between consecutive app-foreground
      *  events, as a coarser proxy for "the phone wasn't touched for a while." */
-    private fun longestInactivityGap(usageStatsManager: UsageStatsManager, start: Long, end: Long): Pair<Long, Long>? {
+    private fun longestInactivityGap(usageStatsManager: UsageStatsManager, start: Long, end: Long): ScreenOffPeriod? {
         val events = runCatching { usageStatsManager.queryEvents(start, end) }.getOrNull() ?: return null
         val event = UsageEvents.Event()
 
@@ -252,6 +299,35 @@ object BedtimeDetector {
             bestDuration = trailingGap
         }
 
-        return if (bestDuration > 0) bestStart to bestEnd else null
+        return if (bestDuration > 0) ScreenOffPeriod(bestStart, bestEnd, 0L) else null
+    }
+
+    /** Finds any periods where the screen was ON between [start] and [end]. */
+    fun findScreenOnPeriods(context: Context, start: Long, end: Long): List<Pair<Long, Long>> {
+        if (!hasUsageAccess(context)) return emptyList()
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            ?: return emptyList()
+        val events = runCatching { usageStatsManager.queryEvents(start, end) }.getOrNull() ?: return emptyList()
+        val event = UsageEvents.Event()
+        
+        val onPeriods = mutableListOf<Pair<Long, Long>>()
+        var screenOnAt: Long? = null
+        
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.SCREEN_INTERACTIVE -> screenOnAt = event.timeStamp
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    screenOnAt?.let { onAt ->
+                        onPeriods += Pair(onAt, event.timeStamp)
+                        screenOnAt = null
+                    }
+                }
+            }
+        }
+        screenOnAt?.let { onAt ->
+            onPeriods += Pair(onAt, end)
+        }
+        return onPeriods
     }
 }

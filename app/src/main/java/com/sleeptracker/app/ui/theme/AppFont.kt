@@ -48,25 +48,40 @@ object GoogleSansFlexAxes {
 }
 
 @OptIn(ExperimentalTextApi::class)
-private fun googleSansFlexFontFamily(
-    styleWeight: FontWeight,
+private fun buildGoogleSansFlexFamily(
     weightAxis: Float,
     widthAxis: Float,
-    roundnessAxis: Float
-): FontFamily = FontFamily(
-    Font(
-        resId = R.font.google_sans_flex,
-        weight = styleWeight,
-        variationSettings = FontVariation.Settings(
-            FontVariation.weight(GoogleSansFlexAxes.resolveWeight(styleWeight, weightAxis)),
-            FontVariation.width(widthAxis.coerceIn(GoogleSansFlexAxes.WIDTH_RANGE)),
-            // ROND ("Roundness") is a custom axis this font defines itself, not one of the
-            // handful of registered axes (wght/wdth/slnt/ital/opsz) that FontVariation exposes
-            // dedicated helpers for, so it's set via the raw tag/value overload instead.
-            FontVariation.Setting("ROND", roundnessAxis.coerceIn(GoogleSansFlexAxes.ROUNDNESS_RANGE))
-        )
+    roundnessAxis: Float,
+    isHeader: Boolean
+): FontFamily {
+    val weights = listOf(
+        FontWeight.Thin, FontWeight.ExtraLight, FontWeight.Light, FontWeight.Normal,
+        FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold, FontWeight.ExtraBold, FontWeight.Black
     )
-)
+    return FontFamily(
+        weights.map { w ->
+            val resolvedWeight = if (isHeader) {
+                (GoogleSansFlexAxes.resolveWeight(w, weightAxis) + 150).coerceIn(1, 1000)
+            } else {
+                GoogleSansFlexAxes.resolveWeight(w, weightAxis)
+            }
+            val resolvedWidth = if (isHeader) {
+                (widthAxis * 1.15f).coerceIn(GoogleSansFlexAxes.WIDTH_RANGE)
+            } else {
+                widthAxis.coerceIn(GoogleSansFlexAxes.WIDTH_RANGE)
+            }
+            Font(
+                resId = R.font.google_sans_flex,
+                weight = w,
+                variationSettings = FontVariation.Settings(
+                    FontVariation.weight(resolvedWeight),
+                    FontVariation.width(resolvedWidth),
+                    FontVariation.Setting("ROND", roundnessAxis.coerceIn(GoogleSansFlexAxes.ROUNDNESS_RANGE))
+                )
+            )
+        }
+    )
+}
 
 /**
  * Builds the app's [Typography]: either [SleepTrackerTypography] untouched (the plain Android
@@ -86,13 +101,11 @@ fun rememberAppTypography(
     if (!useApplicationFont) {
         SleepTrackerTypography
     } else {
-        fun TextStyle.withGoogleSansFlex(): TextStyle = copy(
-            fontFamily = googleSansFlexFontFamily(
-                styleWeight = fontWeight ?: FontWeight.Normal,
-                weightAxis = weightAxis,
-                widthAxis = widthAxis,
-                roundnessAxis = roundnessAxis
-            ),
+        val bodyFamily = buildGoogleSansFlexFamily(weightAxis, widthAxis, roundnessAxis, isHeader = false)
+        val headerFamily = buildGoogleSansFlexFamily(weightAxis, widthAxis, roundnessAxis, isHeader = true)
+
+        fun TextStyle.withGoogleSansFlex(isHeader: Boolean = false): TextStyle = copy(
+            fontFamily = if (isHeader) headerFamily else bodyFamily,
             // SleepTrackerTypography's lineHeight values were tuned for the system font's
             // metrics. Google Sans Flex - especially pushed toward its heavier/rounder/wider
             // end - can report taller ascent+descent than that original font did, and a fixed
@@ -106,21 +119,21 @@ fun rememberAppTypography(
         )
         with(SleepTrackerTypography) {
             copy(
-                displayLarge = displayLarge.withGoogleSansFlex(),
-                displayMedium = displayMedium.withGoogleSansFlex(),
-                displaySmall = displaySmall.withGoogleSansFlex(),
-                headlineLarge = headlineLarge.withGoogleSansFlex(),
-                headlineMedium = headlineMedium.withGoogleSansFlex(),
-                headlineSmall = headlineSmall.withGoogleSansFlex(),
-                titleLarge = titleLarge.withGoogleSansFlex(),
-                titleMedium = titleMedium.withGoogleSansFlex(),
-                titleSmall = titleSmall.withGoogleSansFlex(),
-                bodyLarge = bodyLarge.withGoogleSansFlex(),
-                bodyMedium = bodyMedium.withGoogleSansFlex(),
-                bodySmall = bodySmall.withGoogleSansFlex(),
-                labelLarge = labelLarge.withGoogleSansFlex(),
-                labelMedium = labelMedium.withGoogleSansFlex(),
-                labelSmall = labelSmall.withGoogleSansFlex()
+                displayLarge = displayLarge.withGoogleSansFlex(isHeader = true),
+                displayMedium = displayMedium.withGoogleSansFlex(isHeader = true),
+                displaySmall = displaySmall.withGoogleSansFlex(isHeader = true),
+                headlineLarge = headlineLarge.withGoogleSansFlex(isHeader = true),
+                headlineMedium = headlineMedium.withGoogleSansFlex(isHeader = true),
+                headlineSmall = headlineSmall.withGoogleSansFlex(isHeader = true),
+                titleLarge = titleLarge.withGoogleSansFlex(isHeader = true),
+                titleMedium = titleMedium.withGoogleSansFlex(isHeader = false),
+                titleSmall = titleSmall.withGoogleSansFlex(isHeader = false),
+                bodyLarge = bodyLarge.withGoogleSansFlex(isHeader = false),
+                bodyMedium = bodyMedium.withGoogleSansFlex(isHeader = false),
+                bodySmall = bodySmall.withGoogleSansFlex(isHeader = false),
+                labelLarge = labelLarge.withGoogleSansFlex(isHeader = false),
+                labelMedium = labelMedium.withGoogleSansFlex(isHeader = false),
+                labelSmall = labelSmall.withGoogleSansFlex(isHeader = false)
             )
         }
     }

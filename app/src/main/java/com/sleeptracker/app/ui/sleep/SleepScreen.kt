@@ -354,7 +354,7 @@ private fun EndSessionSheet(onDismiss: () -> Unit, onConfirm: (Mood?, String?, I
                         modifier = Modifier
                             .weight(1f)
                             .clip(MaterialTheme.shapes.medium)
-                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
                             .clickable { selectedMood = mood }
                             .padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally

@@ -1,6 +1,7 @@
 package com.sleeptracker.app.ui.timeline
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,17 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
     val state by viewModel.uiState.collectAsState()
     var showEditSheet by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var awakePeriods by remember { mutableStateOf<List<Pair<Long, Long>>>(emptyList()) }
+
+    LaunchedEffect(state.session?.startEpochMillis, state.session?.endEpochMillis) {
+        val session = state.session ?: return@LaunchedEffect
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val end = session.endEpochMillis ?: System.currentTimeMillis()
+            val periods = com.sleeptracker.app.util.BedtimeDetector.findScreenOnPeriods(context, session.startEpochMillis, end)
+            awakePeriods = periods
+        }
+    }
 
     LaunchedEffect(state.deleted) {
         if (state.deleted) onBack()
@@ -144,7 +156,11 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
                 ExpressiveCard {
                     SectionHeader(title = "Timeline")
                     Spacer(modifier = Modifier.height(12.dp))
-                    NightTimelineBar(startEpochMillis = session.startEpochMillis, endEpochMillis = session.endEpochMillis ?: session.startEpochMillis)
+                    NightTimelineBar(
+                        startEpochMillis = session.startEpochMillis,
+                        endEpochMillis = session.endEpochMillis ?: session.startEpochMillis,
+                        awakePeriods = awakePeriods
+                    )
                 }
             }
 
@@ -152,11 +168,18 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
                 ExpressiveCard {
                     SectionHeader(title = "Mood & quality")
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = { showEditSheet = true })
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically, 
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                         session.mood?.let {
                             Text(it.emoji, style = MaterialTheme.typography.headlineSmall)
                             Text(it.label, style = MaterialTheme.typography.bodyMedium)
-                        } ?: Text("No mood recorded", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } ?: Text("No mood recorded - tap to add", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                     }
                     session.qualityRating?.let { quality ->
                         Spacer(modifier = Modifier.height(8.dp))
@@ -223,16 +246,32 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
         if (showEditSheet) {
             SessionEditorSheet(
                 initial = session,
+                settings = state.settings,
                 onDismiss = { showEditSheet = false },
-                onSave = { start, end, mood, quality, notes, tags, delayUsed ->
-                    viewModel.updateSession(start, end, mood, quality, notes, tags, delayUsed)
+                onSave = { start, end, mood, quality, notes, tags, delayUsed, totalPausedMillis ->
+                    viewModel.updateSession(start, end, mood, quality, notes, tags, delayUsed, totalPausedMillis)
                     showEditSheet = false
                 }
             )
         }
 
         if (showDeleteConfirm) {
+            var backProgress by remember { mutableStateOf(0f) }
+            androidx.activity.compose.PredictiveBackHandler { progress ->
+                try {
+                    progress.collect { backProgress = it.progress }
+                    showDeleteConfirm = false
+                } catch (e: java.util.concurrent.CancellationException) {
+                    backProgress = 0f
+                }
+            }
             AlertDialog(
+                modifier = Modifier.graphicsLayer {
+                    val scale = 1f - (0.1f * backProgress)
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = 1f - (0.5f * backProgress)
+                },
                 onDismissRequest = { showDeleteConfirm = false },
                 title = { Text("Delete this sleep entry?") },
                 text = { Text("This cannot be undone.") },
@@ -251,7 +290,7 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
 }
 
 @Composable
-private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long) {
+private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awakePeriods: List<Pair<Long, Long>>) {
     val zone = java.time.ZoneId.systemDefault()
     val startTime = java.time.Instant.ofEpochMilli(startEpochMillis).atZone(zone).toLocalTime()
     val endTime = java.time.Instant.ofEpochMilli(endEpochMillis).atZone(zone).toLocalTime()
@@ -275,7 +314,27 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long) {
                 .weight(durationFraction)
                 .fillMaxHeight()
                 .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small)
-        )
+        ) {
+            // Draw awake markers
+            val sessionDuration = endEpochMillis - startEpochMillis
+            if (sessionDuration > 0) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    awakePeriods.forEach { (awakeStart, awakeEnd) ->
+                        val startOffset = ((awakeStart - startEpochMillis).toFloat() / sessionDuration).coerceIn(0f, 1f)
+                        val endOffset = ((awakeEnd - startEpochMillis).toFloat() / sessionDuration).coerceIn(0f, 1f)
+                        
+                        val startX = startOffset * size.width
+                        val endX = endOffset * size.width
+                        
+                        drawRect(
+                            color = androidx.compose.ui.graphics.Color.Red.copy(alpha = 0.6f),
+                            topLeft = androidx.compose.ui.geometry.Offset(startX, 0f),
+                            size = androidx.compose.ui.geometry.Size((endX - startX).coerceAtLeast(2.dp.toPx()), size.height)
+                        )
+                    }
+                }
+            }
+        }
         if (trailingFraction > 0f) {
             Box(modifier = Modifier.weight(trailingFraction))
         }

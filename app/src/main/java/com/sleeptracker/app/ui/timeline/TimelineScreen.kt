@@ -82,6 +82,7 @@ import com.sleeptracker.app.data.model.SleepSession
 import com.sleeptracker.app.ui.components.DateTimeFieldRow
 import com.sleeptracker.app.ui.components.ExpressiveSnackbarHost
 import com.sleeptracker.app.ui.navigation.LocalBottomBarSpace
+import com.sleeptracker.app.ui.navigation.LocalNavBarWidth
 
 import com.sleeptracker.app.util.BedtimeDetector
 import com.sleeptracker.app.util.TimeUtils
@@ -141,6 +142,7 @@ fun TimelineScreen(
     }
 
     val bottomBarSpace = LocalBottomBarSpace.current
+    val navBarWidth = LocalNavBarWidth.current
 
     // The FAB and Snackbar are deliberately placed here, in this Box, rather than through
     // Scaffold's own `floatingActionButton`/`snackbarHost` slots. Scaffold has real built-in
@@ -155,6 +157,10 @@ fun TimelineScreen(
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+            var searchExpanded by remember { mutableStateOf(false) }
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+            val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+
             if (selectionMode) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -178,15 +184,72 @@ fun TimelineScreen(
                     }
                 }
             } else {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = viewModel::updateSearch,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    placeholder = { Text("Search notes, mood, tags") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.extraLarge
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .height(64.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !searchExpanded,
+                        enter = fadeIn() + androidx.compose.animation.expandHorizontally(expandFrom = Alignment.Start),
+                        exit = fadeOut() + androidx.compose.animation.shrinkHorizontally(shrinkTowards = Alignment.Start)
+                    ) {
+                        Text(
+                            "History",
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (!searchExpanded) {
+                        IconButton(onClick = { searchExpanded = true }) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search")
+                        }
+                    }
+
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = searchExpanded,
+                        enter = fadeIn() + androidx.compose.animation.expandHorizontally(expandFrom = Alignment.End),
+                        exit = fadeOut() + androidx.compose.animation.shrinkHorizontally(shrinkTowards = Alignment.End),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LaunchedEffect(searchExpanded) {
+                            if (searchExpanded) focusRequester.requestFocus()
+                        }
+                        OutlinedTextField(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::updateSearch,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .androidx.compose.ui.focus.focusRequester(focusRequester)
+                                .androidx.compose.ui.focus.onFocusChanged { focusState ->
+                                    if (!focusState.isFocused && state.searchQuery.isEmpty()) {
+                                        searchExpanded = false
+                                    }
+                                },
+                            placeholder = { Text("Search notes, mood, tags") },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    if (state.searchQuery.isNotEmpty()) {
+                                        viewModel.updateSearch("")
+                                    } else {
+                                        focusManager.clearFocus()
+                                        searchExpanded = false
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                                }
+                            },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.extraLarge
+                        )
+                    }
+                }
             }
 
             if (state.groups.isEmpty()) {
@@ -284,15 +347,17 @@ fun TimelineScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomBarSpace + 8.dp)
+                .width(navBarWidth)
         )
     }
 
     if (showAddSheet) {
         SessionEditorSheet(
             initial = null,
+            settings = state.settings,
             onDismiss = { showAddSheet = false },
-            onSave = { start, end, mood, quality, notes, tags, delayUsed ->
-                viewModel.addManualSession(start, end ?: start, mood, quality, notes, tags, delayUsed)
+            onSave = { start, end, mood, quality, notes, tags, delayUsed, totalPausedMillis ->
+                viewModel.addManualSession(start, end ?: start, mood, quality, notes, tags, delayUsed, totalPausedMillis)
                 showAddSheet = false
             }
         )
@@ -301,9 +366,10 @@ fun TimelineScreen(
     editingSession?.let { session ->
         SessionEditorSheet(
             initial = session,
+            settings = state.settings,
             onDismiss = { editingSession = null },
-            onSave = { start, end, mood, quality, notes, tags, delayUsed ->
-                viewModel.updateSession(session, start, end, mood, quality, notes, tags, delayUsed)
+            onSave = { start, end, mood, quality, notes, tags, delayUsed, totalPausedMillis ->
+                viewModel.updateSession(session, start, end, mood, quality, notes, tags, delayUsed, totalPausedMillis)
                 editingSession = null
             }
         )
@@ -326,7 +392,7 @@ private fun SessionCard(
         Card(
             shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(
-                containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer
             ),
             modifier = modifier
                 .fillMaxWidth()
@@ -413,19 +479,22 @@ private fun SessionCardContent(session: SleepSession, leadingSelectionIcon: Bool
         Text(
             text = "${TimeUtils.formatTime(session.startEpochMillis)} → ${session.endEpochMillis?.let { TimeUtils.formatTime(it) } ?: "—"}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Duration",
-            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
             text = TimeUtils.formatDurationShort(session.durationMillis),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
+        if (session.totalPausedMillis > 0) {
+            Text(
+                text = "Includes ${TimeUtils.formatDurationShort(session.totalPausedMillis)} awake",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
         session.qualityRating?.let { quality ->
             Row(modifier = Modifier.padding(top = 4.dp)) {
                 repeat(5) { i ->
@@ -497,8 +566,9 @@ private fun DetectionCaption(detection: BedtimeDetector.Result?, zone: ZoneId) {
 @Composable
 internal fun SessionEditorSheet(
     initial: SleepSession?,
+    settings: com.sleeptracker.app.data.datastore.AppSettings,
     onDismiss: () -> Unit,
-    onSave: (start: Long, end: Long?, mood: Mood?, quality: Int?, notes: String, tags: List<String>, delayUsed: Int) -> Unit
+    onSave: (start: Long, end: Long?, mood: Mood?, quality: Int?, notes: String, tags: List<String>, delayUsed: Int, totalPausedMillis: Long) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
     val now = System.currentTimeMillis()
@@ -510,12 +580,14 @@ internal fun SessionEditorSheet(
     var selectedMood by remember(initial) { mutableStateOf(initial?.mood) }
     var quality by remember(initial) { mutableStateOf(initial?.qualityRating) }
     var delayUsed by remember(initial) { mutableStateOf(initial?.startDelayMinutesUsed ?: 0) }
+    var totalPausedMillis by remember(initial) { mutableStateOf(initial?.totalPausedMillis ?: 0L) }
     var delayMenuExpanded by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     var sleepDetection by remember(initial) { mutableStateOf<BedtimeDetector.Result?>(null) }
     var showUsageAccessDialog by remember { mutableStateOf(false) }
     var showRecentPeriodsDialog by remember { mutableStateOf(false) }
+    var smartAnalyzeEnabled by remember { mutableStateOf(true) }
     var recentPeriods by remember(initial) { mutableStateOf<List<BedtimeDetector.ScreenOffPeriod>>(emptyList()) }
     // Set right before deep-linking out to the system's Usage Access settings screen, so that
     // when the user comes back, detection can retry automatically once instead of making them
@@ -523,12 +595,13 @@ internal fun SessionEditorSheet(
     var awaitingUsageAccessGrant by remember { mutableStateOf(false) }
 
     fun runSleepDetection() {
-        val result = BedtimeDetector.detectLongestScreenOffPeriod(context)
+        val result = BedtimeDetector.detectLongestScreenOffPeriod(context, settings, smartAnalyzeEnabled)
         sleepDetection = result
         when (result) {
             is BedtimeDetector.Result.Detected -> {
                 startMillis = result.startEpochMillis
                 endMillis = result.endEpochMillis
+                totalPausedMillis = result.totalPausedMillis
             }
             BedtimeDetector.Result.PermissionRequired -> {
                 awaitingUsageAccessGrant = true
@@ -604,7 +677,7 @@ internal fun SessionEditorSheet(
                     TextButton(
                         onClick = {
                             if (BedtimeDetector.hasUsageAccess(context)) {
-                                recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context)
+                                recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context, settings, smartAnalyzeEnabled)
                                 showRecentPeriodsDialog = true
                             } else {
                                 awaitingUsageAccessGrant = true
@@ -628,7 +701,7 @@ internal fun SessionEditorSheet(
                         modifier = Modifier
                             .weight(1f)
                             .clip(MaterialTheme.shapes.small)
-                            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
                             .clickable { selectedMood = mood }
                             .padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -692,7 +765,7 @@ internal fun SessionEditorSheet(
             Button(
                 onClick = {
                     val tags = tagsText.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                    onSave(startMillis, endMillis, selectedMood, quality, notes, tags, delayUsed)
+                    onSave(startMillis, endMillis, selectedMood, quality, notes, tags, delayUsed, totalPausedMillis)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = endMillis > startMillis
@@ -703,7 +776,23 @@ internal fun SessionEditorSheet(
     }
 
     if (showUsageAccessDialog) {
+        var backProgress by remember { mutableStateOf(0f) }
+        androidx.activity.compose.PredictiveBackHandler { progress ->
+            try {
+                progress.collect { backProgress = it.progress }
+                showUsageAccessDialog = false
+                awaitingUsageAccessGrant = false
+            } catch (e: java.util.concurrent.CancellationException) {
+                backProgress = 0f
+            }
+        }
         AlertDialog(
+            modifier = Modifier.graphicsLayer {
+                val scale = 1f - (0.1f * backProgress)
+                scaleX = scale
+                scaleY = scale
+                alpha = 1f - (0.5f * backProgress)
+            },
             onDismissRequest = {
                 showUsageAccessDialog = false
                 awaitingUsageAccessGrant = false
@@ -734,34 +823,68 @@ internal fun SessionEditorSheet(
     }
 
     if (showRecentPeriodsDialog) {
+        var backProgress by remember { mutableStateOf(0f) }
+        androidx.activity.compose.PredictiveBackHandler { progress ->
+            try {
+                progress.collect { backProgress = it.progress }
+                showRecentPeriodsDialog = false
+            } catch (e: java.util.concurrent.CancellationException) {
+                backProgress = 0f
+            }
+        }
         AlertDialog(
+            modifier = Modifier.graphicsLayer {
+                val scale = 1f - (0.1f * backProgress)
+                scaleX = scale
+                scaleY = scale
+                alpha = 1f - (0.5f * backProgress)
+            },
             onDismissRequest = { showRecentPeriodsDialog = false },
             icon = { Icon(Icons.Filled.Bedtime, contentDescription = null) },
             title = { Text("Recent screen-off periods") },
             text = {
-                if (recentPeriods.isEmpty()) {
-                    Text(
-                        "No screen-off stretches of an hour or longer were found in the last 24 hours.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    // Capped so the dialog never grows past a comfortable scroll height even on
-                    // a day with many long off-stretches.
-                    LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                        items(recentPeriods) { period ->
-                            val durationLabel = TimeUtils.formatDurationShort(period.endEpochMillis - period.startEpochMillis)
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(MaterialTheme.shapes.small)
-                                    .clickable {
-                                        startMillis = period.startEpochMillis
-                                        endMillis = period.endEpochMillis
-                                        sleepDetection = null
-                                        showRecentPeriodsDialog = false
-                                    }
-                                    .padding(vertical = 10.dp, horizontal = 4.dp)
-                            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            smartAnalyzeEnabled = !smartAnalyzeEnabled
+                            recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context, settings, smartAnalyzeEnabled)
+                        }.padding(vertical = 8.dp)
+                    ) {
+                        Text("Smart Analyze (merge short wake-ups)", style = MaterialTheme.typography.bodyMedium)
+                        androidx.compose.material3.Switch(
+                            checked = smartAnalyzeEnabled,
+                            onCheckedChange = {
+                                smartAnalyzeEnabled = it
+                                recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context, settings, smartAnalyzeEnabled)
+                            }
+                        )
+                    }
+                    if (recentPeriods.isEmpty()) {
+                        Text(
+                            "No screen-off stretches of an hour or longer were found in the last 24 hours.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        // Capped so the dialog never grows past a comfortable scroll height even on
+                        // a day with many long off-stretches.
+                        LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                            items(recentPeriods) { period ->
+                                val durationLabel = TimeUtils.formatDurationShort(period.endEpochMillis - period.startEpochMillis - period.totalPausedMillis)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(MaterialTheme.shapes.small)
+                                        .clickable {
+                                            startMillis = period.startEpochMillis
+                                            endMillis = period.endEpochMillis
+                                            totalPausedMillis = period.totalPausedMillis
+                                            sleepDetection = null
+                                            showRecentPeriodsDialog = false
+                                        }
+                                        .padding(vertical = 10.dp, horizontal = 4.dp)
+                                ) {
                                 Text(
                                     TimeUtils.formatDate(period.startEpochMillis, zone.id),
                                     style = MaterialTheme.typography.labelMedium,
@@ -778,14 +901,22 @@ internal fun SessionEditorSheet(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                if (period.totalPausedMillis > 0) {
+                                    Text(
+                                        "Merged ${TimeUtils.formatDurationShort(period.totalPausedMillis)} awake",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = { showRecentPeriodsDialog = false }) { Text("Close") }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = { showRecentPeriodsDialog = false }) { Text("Close") }
+        }
         )
     }
 }

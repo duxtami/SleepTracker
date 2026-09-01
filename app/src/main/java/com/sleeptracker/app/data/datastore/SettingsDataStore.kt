@@ -32,6 +32,7 @@ data class AppSettings(
     val startDelayMinutes: Int = 0,
     val showAwakeDuration: Boolean = false,
     val useApplicationFont: Boolean = false,
+    val smartAnalyzeThresholdMinutes: Int = 5,
     // Google Sans Flex variation-axis values (wght/wdth/ROND). These default to the font's own
     // real, font-defined maximums (read from its fvar table: wght tops out at 1000, wdth at 151,
     // ROND at 100) so that the very first time a user flips "Use Application Font" on - before
@@ -77,6 +78,7 @@ class SettingsRepository(private val context: Context) {
         val START_DELAY_MINUTES = intPreferencesKey("start_delay_minutes")
         val SHOW_AWAKE_DURATION = booleanPreferencesKey("show_awake_duration")
         val USE_APPLICATION_FONT = booleanPreferencesKey("use_application_font")
+        val SMART_ANALYZE_THRESHOLD_MINUTES = intPreferencesKey("smart_analyze_threshold_minutes")
         val FONT_WEIGHT_AXIS = floatPreferencesKey("font_weight_axis")
         val FONT_WIDTH_AXIS = floatPreferencesKey("font_width_axis")
         val FONT_ROUNDNESS_AXIS = floatPreferencesKey("font_roundness_axis")
@@ -99,6 +101,7 @@ class SettingsRepository(private val context: Context) {
             startDelayMinutes = prefs[Keys.START_DELAY_MINUTES] ?: 0,
             showAwakeDuration = prefs[Keys.SHOW_AWAKE_DURATION] ?: false,
             useApplicationFont = prefs[Keys.USE_APPLICATION_FONT] ?: false,
+            smartAnalyzeThresholdMinutes = prefs[Keys.SMART_ANALYZE_THRESHOLD_MINUTES] ?: 5,
             fontWeightAxis = prefs[Keys.FONT_WEIGHT_AXIS] ?: 1000f,
             fontWidthAxis = prefs[Keys.FONT_WIDTH_AXIS] ?: 151f,
             fontRoundnessAxis = prefs[Keys.FONT_ROUNDNESS_AXIS] ?: 100f
@@ -152,6 +155,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setUseApplicationFont(enabled: Boolean) {
         context.dataStore.edit { it[Keys.USE_APPLICATION_FONT] = enabled }
+    }
+
+    suspend fun setSmartAnalyzeThresholdMinutes(minutes: Int) {
+        context.dataStore.edit { it[Keys.SMART_ANALYZE_THRESHOLD_MINUTES] = minutes }
     }
 
     suspend fun setFontWeightAxis(value: Float) {

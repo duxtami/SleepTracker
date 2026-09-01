@@ -24,6 +24,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -92,6 +94,9 @@ fun SleepOrb(
     val startColor = if (isActive) primary else lerp(primary, Color.Black, 0.55f)
     val endColor = if (isActive) lerp(primary, Color.Black, 0.22f) else lerp(primary, Color.Black, 0.15f)
 
+    val endColorArgb = endColor.toArgb()
+    val textColor = MaterialTheme.colorScheme.onPrimary
+
     Box(
         modifier = modifier
             .size(size)
@@ -149,7 +154,7 @@ fun SleepOrb(
         Text(
             text = if (isActive) "Tap to end" else "Tap to sleep",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary
+            color = textColor
         )
     }
 }

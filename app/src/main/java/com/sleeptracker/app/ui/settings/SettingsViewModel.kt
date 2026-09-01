@@ -55,6 +55,7 @@ class SettingsViewModel(
 
     // --- Tracking ---
     fun setStartDelayMinutes(minutes: Int) = viewModelScope.launch { settingsRepository.setStartDelayMinutes(minutes) }
+    fun setSmartAnalyzeThresholdMinutes(minutes: Int) = viewModelScope.launch { settingsRepository.setSmartAnalyzeThresholdMinutes(minutes) }
 
     // --- Reminders ---
     fun setBedtimeReminderEnabled(context: Context, enabled: Boolean) = viewModelScope.launch {

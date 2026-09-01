@@ -12,23 +12,30 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.sleeptracker.app.data.datastore.AppSettings
+import com.sleeptracker.app.data.datastore.SettingsRepository
 
 data class MonthGroup(val monthKey: String, val label: String, val sessions: List<SleepSession>)
 
 data class TimelineUiState(
     val groups: List<MonthGroup> = emptyList(),
     val searchQuery: String = "",
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val settings: AppSettings = AppSettings()
 )
 
-class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
+class TimelineViewModel(
+    private val repository: SleepRepository,
+    private val settingsRepository: SettingsRepository
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
 
     val uiState: StateFlow<TimelineUiState> = combine(
         repository.observeAllSessions(),
-        _searchQuery
-    ) { sessions, query ->
+        _searchQuery,
+        settingsRepository.settingsFlow
+    ) { sessions, query, settings ->
         val completedOnly = sessions.filter { !it.isActive }
         val filtered = if (query.isBlank()) {
             completedOnly
@@ -49,7 +56,7 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
                     sessions = list.sortedByDescending { it.startEpochMillis }
                 )
             }
-        TimelineUiState(groups = groups, searchQuery = query, isLoading = false)
+        TimelineUiState(groups = groups, searchQuery = query, isLoading = false, settings = settings)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TimelineUiState())
 
     fun updateSearch(query: String) {
@@ -79,7 +86,8 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
         qualityRating: Int?,
         notes: String,
         tags: List<String>,
-        startDelayMinutesUsed: Int
+        startDelayMinutesUsed: Int,
+        totalPausedMillis: Long
     ) {
         viewModelScope.launch {
             repository.upsertSession(
@@ -91,6 +99,7 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
                     notes = notes,
                     tags = tags,
                     startDelayMinutesUsed = startDelayMinutesUsed,
+                    totalPausedMillis = totalPausedMillis,
                     isManualEntry = true
                 )
             )
@@ -104,7 +113,8 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
         qualityRating: Int?,
         notes: String,
         tags: List<String>,
-        startDelayMinutesUsed: Int
+        startDelayMinutesUsed: Int,
+        totalPausedMillis: Long
     ) {
         viewModelScope.launch {
             repository.upsertSession(
@@ -117,7 +127,8 @@ class TimelineViewModel(private val repository: SleepRepository) : ViewModel() {
                     notes = notes,
                     tags = tags,
                     isManualEntry = true,
-                    startDelayMinutesUsed = startDelayMinutesUsed
+                    startDelayMinutesUsed = startDelayMinutesUsed,
+                    totalPausedMillis = totalPausedMillis
                 )
             )
         }

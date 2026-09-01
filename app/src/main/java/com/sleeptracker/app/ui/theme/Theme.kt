@@ -71,6 +71,8 @@ private fun getSeedColor(style: ColorStyle): Color = when (style) {
     ColorStyle.SUNSET -> SeedSunset
     ColorStyle.FOREST -> SeedForest
     ColorStyle.ROSE -> SeedRose
+    ColorStyle.OCEAN -> SeedOcean
+    ColorStyle.AMBER -> SeedAmber
     else -> SeedLavender
 }
 

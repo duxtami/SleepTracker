@@ -23,6 +23,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.ui.graphics.graphicsLayer
+import java.util.concurrent.CancellationException
 import com.sleeptracker.app.di.AppContainer
 import com.sleeptracker.app.ui.insights.InsightsScreen
 import com.sleeptracker.app.ui.insights.InsightsViewModel
@@ -67,6 +70,7 @@ fun SleepTrackerNavGraph(container: AppContainer) {
 
     val density = LocalDensity.current
     var navBarHeight by remember { mutableStateOf(0.dp) }
+    var navBarWidth by remember { mutableStateOf(0.dp) }
     // Exactly the distance from the screen's bottom edge to the TOP of the nav bar - i.e. the
     // minimum a screen's own floating content must clear, with no opinion about any extra
     // breathing room beyond that. Deliberately does NOT bake in additional spacing here:
@@ -77,11 +81,18 @@ fun SleepTrackerNavGraph(container: AppContainer) {
     val reservedBottomSpace: Dp = if (showNav) navBarHeight + NavBarBottomOffset else 0.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalBottomBarSpace provides reservedBottomSpace) {
+        CompositionLocalProvider(
+            LocalBottomBarSpace provides reservedBottomSpace,
+            LocalNavBarWidth provides navBarWidth
+        ) {
             NavHost(
                 navController = navController,
                 startDestination = Destination.SLEEP.route,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.9f) },
+                exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)) },
+                popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) },
+                popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.85f) }
             ) {
                 composable(Destination.SLEEP.route) {
                     val vm: SleepViewModel = viewModel(
@@ -93,7 +104,7 @@ fun SleepTrackerNavGraph(container: AppContainer) {
                 }
                 composable(Destination.TIMELINE.route) {
                     val vm: TimelineViewModel = viewModel(
-                        factory = ViewModelFactory { TimelineViewModel(container.sleepRepository) }
+                        factory = ViewModelFactory { TimelineViewModel(container.sleepRepository, container.settingsRepository) }
                     )
                     TimelineScreen(
                         viewModel = vm,
@@ -160,7 +171,10 @@ fun SleepTrackerNavGraph(container: AppContainer) {
                     .align(Alignment.BottomCenter)
                     .padding(bottom = NavBarBottomOffset)
                     .onGloballyPositioned { coordinates ->
-                        navBarHeight = with(density) { coordinates.size.height.toDp() }
+                        with(density) {
+                            navBarHeight = coordinates.size.height.toDp()
+                            navBarWidth = coordinates.size.width.toDp()
+                        }
                     }
             )
         }

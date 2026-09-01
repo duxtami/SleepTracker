@@ -179,8 +179,8 @@ private fun GenericNavPill(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
     val background by animateColorAsState(targetBackground, tween(SHORT4, easing = EmphasizedEasing), label = "genericNavPillBackground")
     val contentColor by animateColorAsState(targetContentColor, tween(SHORT4, easing = EmphasizedEasing), label = "genericNavPillContent")
 
@@ -267,11 +267,11 @@ private fun TrailingActionButton(action: NavTrailingAction, onClick: () -> Unit)
             }
             .size(56.dp),
         shape = PillShape,
-        // Deliberately the SAME tokens as a pill's selected state below (primaryContainer /
-        // onPrimaryContainer) - not an independently-chosen accent - so this button reads as
+        // Deliberately the SAME tokens as a pill's selected state below (primary /
+        // onPrimary) - not an independently-chosen accent - so this button reads as
         // part of the same design family as the main pill instead of clashing with it.
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         interactionSource = interactionSource
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -289,8 +289,8 @@ private fun NavPill(destination: Destination, isSelected: Boolean, onClick: () -
     // Only the selected destination gets a filled pill. Unselected destinations render as bare
     // icon buttons with no background at all - so they read as plain floating icons against the
     // bar, rather than as inactive pills of their own.
-    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+    val targetBackground = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+    val targetContentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
     // Smooth color cross-fade on selection instead of an abrupt swap.
     val background by animateColorAsState(targetBackground, tween(SHORT4, easing = EmphasizedEasing), label = "navPillBackground")

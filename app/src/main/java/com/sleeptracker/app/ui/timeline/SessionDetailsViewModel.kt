@@ -47,7 +47,8 @@ class SessionDetailsViewModel(
         qualityRating: Int?,
         notes: String,
         tags: List<String>,
-        startDelayMinutesUsed: Int
+        startDelayMinutesUsed: Int,
+        totalPausedMillis: Long
     ) {
         val current = uiState.value.session ?: return
         viewModelScope.launch {
@@ -60,6 +61,7 @@ class SessionDetailsViewModel(
                     notes = notes,
                     tags = tags,
                     startDelayMinutesUsed = startDelayMinutesUsed,
+                    totalPausedMillis = totalPausedMillis,
                     isManualEntry = true
                 )
             )

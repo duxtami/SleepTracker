@@ -98,10 +98,8 @@ private fun ExpressiveSnackbar(data: SnackbarData) {
         // which are both compact shapes rather than edge-to-edge bars - instead of a generic
         // full-width toast. It also sidesteps the FAB entirely for any message this short; the
         // max width below is only a safety cap for the rare long message, not a target width.
-        modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .widthIn(max = 420.dp),
-        shape = MaterialTheme.shapes.extraLarge,
+        modifier = Modifier.fillMaxWidth(),
+        shape = com.sleeptracker.app.ui.theme.PillShape,
         // Previously inverseSurface/inverseOnSurface - the classic "toast" Snackbar look,
         // which is deliberately the *opposite* tone of the current theme (a light card in dark
         // mode, a dark card in light mode). That's normally intentional Material 3 spec

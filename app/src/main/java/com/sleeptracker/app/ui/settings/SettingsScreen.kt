@@ -187,12 +187,34 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     )
                     if (!settings.dynamicColor) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             ColorStyle.entries.filter { it != ColorStyle.DYNAMIC }.forEach { style ->
+                                val seedColor = when (style) {
+                                    ColorStyle.TEAL -> androidx.compose.ui.graphics.Color(0xFF00696C)
+                                    ColorStyle.SUNSET -> androidx.compose.ui.graphics.Color(0xFFA6420A)
+                                    ColorStyle.FOREST -> androidx.compose.ui.graphics.Color(0xFF3C6C34)
+                                    ColorStyle.ROSE -> androidx.compose.ui.graphics.Color(0xFFB01458)
+                                    ColorStyle.OCEAN -> androidx.compose.ui.graphics.Color(0xFF005AC1)
+                                    ColorStyle.AMBER -> androidx.compose.ui.graphics.Color(0xFF795900)
+                                    else -> androidx.compose.ui.graphics.Color(0xFF5B5FC7) // LAVENDER
+                                }
                                 FilterChip(
                                     selected = settings.colorStyle == style,
                                     onClick = { viewModel.setColorStyle(style) },
-                                    label = { Text(style.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                                    label = { Text(style.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                    leadingIcon = {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(16.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(seedColor)
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -221,7 +243,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         roundnessAxis = settings.fontRoundnessAxis,
                         onWeightChange = viewModel::setFontWeightAxis,
                         onWidthChange = viewModel::setFontWidthAxis,
-                        onRoundnessChange = viewModel::setFontRoundnessAxis
+                        onRoundnessChange = viewModel::setFontRoundnessAxis,
+                        onReset = {
+                            viewModel.setFontWeightAxis(GoogleSansFlexAxes.WEIGHT_MAX)
+                            viewModel.setFontWidthAxis(GoogleSansFlexAxes.WIDTH_MAX)
+                            viewModel.setFontRoundnessAxis(GoogleSansFlexAxes.ROUNDNESS_MAX)
+                        }
                     )
                 }
             }
@@ -285,12 +312,25 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 ExpressiveCard {
                     SectionHeader(title = "Tracking")
                     Spacer(modifier = Modifier.height(16.dp))
-                    StartDelayPicker(
+                    SettingsDropdownPicker(
+                        label = "Start Time Delay",
                         selectedMinutes = settings.startDelayMinutes,
                         onSelect = viewModel::setStartDelayMinutes
                     )
                     Text(
                         "Most people don't fall asleep the instant they press Start. Choose a delay and tracking will automatically begin once it elapses.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SettingsDropdownPicker(
+                        label = "Smart Analyze Threshold",
+                        selectedMinutes = settings.smartAnalyzeThresholdMinutes,
+                        onSelect = viewModel::setSmartAnalyzeThresholdMinutes
+                    )
+                    Text(
+                        "Automatically merges short wake-ups under this threshold into a single continuous sleep session.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -458,7 +498,22 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     }
 
     if (showClearDataConfirm) {
+        var backProgress by remember { mutableStateOf(0f) }
+        androidx.activity.compose.PredictiveBackHandler { progress ->
+            try {
+                progress.collect { backProgress = it.progress }
+                showClearDataConfirm = false
+            } catch (e: java.util.concurrent.CancellationException) {
+                backProgress = 0f
+            }
+        }
         AlertDialog(
+            modifier = Modifier.graphicsLayer {
+                val scale = 1f - (0.1f * backProgress)
+                scaleX = scale
+                scaleY = scale
+                alpha = 1f - (0.5f * backProgress)
+            },
             onDismissRequest = { showClearDataConfirm = false },
             title = { Text("Clear all sleep data?") },
             text = { Text("Every recorded sleep session will be permanently deleted. This cannot be undone.") },
@@ -476,11 +531,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 }
 
 @Composable
-private fun StartDelayPicker(selectedMinutes: Int, onSelect: (Int) -> Unit) {
+private fun SettingsDropdownPicker(label: String, selectedMinutes: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         Column(modifier = Modifier.fillMaxWidth().clickable { expanded = true }) {
-            Text("Start Time Delay", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 if (selectedMinutes == 0) "Off" else "$selectedMinutes minutes",
@@ -513,6 +568,7 @@ private fun GoogleSansFlexCustomizationCard(
     onWeightChange: (Float) -> Unit,
     onWidthChange: (Float) -> Unit,
     onRoundnessChange: (Float) -> Unit,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
@@ -563,6 +619,11 @@ private fun GoogleSansFlexCustomizationCard(
             exit = fadeOut(animationSpec = tween(150)) + shrinkVertically(animationSpec = tween(200))
         ) {
             Column(modifier = Modifier.padding(top = 20.dp, start = 8.dp, end = 8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onReset) {
+                        Text("Reset to default")
+                    }
+                }
                 AxisSliderRow(
                     label = "Weight",
                     value = weightAxis,

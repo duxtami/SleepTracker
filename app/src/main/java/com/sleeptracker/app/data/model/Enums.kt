@@ -20,5 +20,5 @@ enum class ThemeMode {
 
 /** Accent color source. */
 enum class ColorStyle {
-    DYNAMIC, LAVENDER, TEAL, SUNSET, FOREST, ROSE
+    DYNAMIC, LAVENDER, TEAL, SUNSET, FOREST, ROSE, OCEAN, AMBER
 }

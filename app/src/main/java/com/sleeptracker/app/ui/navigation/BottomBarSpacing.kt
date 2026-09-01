@@ -27,3 +27,4 @@ import androidx.compose.ui.unit.dp
  * 16.dp`.
  */
 val LocalBottomBarSpace = compositionLocalOf<Dp> { 0.dp }
+val LocalNavBarWidth = compositionLocalOf<Dp> { 0.dp }
