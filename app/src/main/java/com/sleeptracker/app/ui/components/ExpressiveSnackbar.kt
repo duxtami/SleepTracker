@@ -66,7 +66,7 @@ fun ExpressiveSnackbarHost(
         if (current != null) lastData = current
     }
 
-    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+    Box(modifier = modifier, contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(
             visible = current != null,
             enter = fadeIn(animationSpec = tween(durationMillis = 180)) +

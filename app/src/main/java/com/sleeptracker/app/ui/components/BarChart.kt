@@ -1,59 +1,133 @@
 package com.sleeptracker.app.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Minimal, dependency-free bar chart: each entry in [values] (already sorted chronologically)
- * is rendered as a rounded bar scaled against the maximum value. [goalFraction] draws a
- * horizontal target line (e.g. the sleep goal) when between 0 and 1.
- */
+data class BarData(
+    val value: Float,
+    val label: String,
+    val isHighlight: Boolean = false
+)
+
 @Composable
 fun BarChart(
-    values: List<Float>,
+    data: List<BarData>,
     modifier: Modifier = Modifier,
     barColor: Color = MaterialTheme.colorScheme.primary,
-    goalFraction: Float? = null,
-    height: androidx.compose.ui.unit.Dp = 140.dp
+    highlightColor: Color = MaterialTheme.colorScheme.tertiary,
+    height: androidx.compose.ui.unit.Dp = 160.dp,
+    calloutText: String? = null
 ) {
-    val goalColor = MaterialTheme.colorScheme.tertiary
-    Canvas(modifier = modifier.fillMaxWidth().height(height)) {
-        if (values.isEmpty()) return@Canvas
-        val maxValue = (values.maxOrNull() ?: 1f).coerceAtLeast(0.01f)
-        val barSpacing = 6.dp.toPx()
-        val barWidth = (size.width - barSpacing * (values.size - 1)) / values.size
+    if (data.isEmpty()) return
 
-        values.forEachIndexed { index, value ->
-            val barHeight = (value / maxValue) * size.height
-            val left = index * (barWidth + barSpacing)
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(left, size.height - barHeight),
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f),
-                style = Fill
-            )
+    val maxValue = (data.maxOfOrNull { it.value } ?: 1f).coerceAtLeast(0.01f)
+    
+    // Animation for all bars to grow from the bottom
+    val animationProgress = remember { Animatable(0f) }
+    LaunchedEffect(data) {
+        animationProgress.snapTo(0f)
+        animationProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+        )
+    }
+
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(height)
+        ) {
+            val barSpacing = 8.dp.toPx()
+            val totalSpacing = barSpacing * (data.size - 1)
+            val barWidth = (size.width - totalSpacing) / data.size
+
+            data.forEachIndexed { index, item ->
+                val targetBarHeight = (item.value / maxValue) * size.height
+                val barHeight = targetBarHeight * animationProgress.value
+                val left = index * (barWidth + barSpacing)
+                
+                // Draw background track
+                drawRoundRect(
+                    color = trackColor.copy(alpha = 0.5f),
+                    topLeft = Offset(left, 0f),
+                    size = Size(barWidth, size.height),
+                    cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
+                )
+
+                // Draw actual bar
+                val color = if (item.isHighlight) highlightColor else barColor
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(left, size.height - barHeight),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Labels
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+        ) {
+            data.forEach { item ->
+                Text(
+                    text = item.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (item.isHighlight) highlightColor else labelColor,
+                    fontWeight = if (item.isHighlight) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
         }
 
-        if (goalFraction != null && goalFraction in 0f..1f) {
-            val y = size.height * (1f - goalFraction)
-            drawLine(
-                color = goalColor,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 2.dp.toPx(),
-                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 10f))
-            )
+        if (calloutText != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.medium
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = calloutText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

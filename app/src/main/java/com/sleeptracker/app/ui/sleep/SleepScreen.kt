@@ -107,6 +107,16 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
+                Text(
+                    text = "Home",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            item {
                 val phase = state.phase
                 Column {
                     Text(
@@ -152,6 +162,32 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                                 )
                             }
                         }
+                    }
+                }
+            }
+
+            if (state.recentSleepDebtMinutes > 0) {
+                item {
+                    val debt = state.recentSleepDebtMinutes
+                    val isSignificant = debt >= 60
+                    val containerColor = if (isSignificant) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer
+                    val textColor = if (isSignificant) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    
+                    ExpressiveCard(containerColor = containerColor) {
+                        SectionHeader(title = "Sleep debt")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = TimeUtils.formatMinutesAsHoursMinutes(debt),
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor
+                        )
+                        Text(
+                            text = "Over the last 7 days",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isSignificant) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }

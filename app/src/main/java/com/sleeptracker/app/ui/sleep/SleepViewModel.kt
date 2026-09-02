@@ -40,6 +40,7 @@ data class SleepUiState(
     // when the "Awake for" live timer below needs to keep ticking. Without this, StateFlow's
     // conflation would silently drop ticks whenever nothing else in the state actually changed,
     // and collectAsState() would never recompose.
+    val recentSleepDebtMinutes: Int = 0,
     val nowMillis: Long = System.currentTimeMillis()
 ) {
     val goalProgress: Float
@@ -78,9 +79,15 @@ class SleepViewModel(
         repository.observeActiveSession(),
         repository.observeLastCompletedSession(),
         settingsRepository.settingsFlow,
-        trackingPrefsRepository.pendingDelayFlow,
-        _errorMessage
-    ) { active, last, settings, pending, error ->
+        combine(
+            trackingPrefsRepository.pendingDelayFlow,
+            _errorMessage,
+            repository.observeAllSessions()
+        ) { pending, error, sessions ->
+            Triple(pending, error, sessions)
+        }
+    ) { active, last, settings, triple ->
+        val (pending, error, sessions) = triple
         val phase = when {
             active != null -> TrackingPhase.Tracking(active)
             pending != null -> TrackingPhase.Waiting(
@@ -90,12 +97,18 @@ class SleepViewModel(
             )
             else -> TrackingPhase.Idle
         }
+        
+        val cutoff = java.time.Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS).toEpochMilli()
+        val recentSessions = sessions.filter { it.startEpochMillis >= cutoff }
+        val insights = com.sleeptracker.app.util.SleepCalculator.computeInsights(recentSessions, settings.sleepGoalMinutes)
+
         SleepUiState(
             greeting = com.sleeptracker.app.util.TimeUtils.greeting(),
             phase = phase,
             lastCompletedSession = last,
             settings = settings,
-            errorMessage = error
+            errorMessage = error,
+            recentSleepDebtMinutes = insights.sleepDebtMinutes
         )
     }
 

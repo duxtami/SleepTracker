@@ -128,35 +128,64 @@ fun HeroStat(state: InsightsUiState) {
 
 @Composable
 fun TrendsSection(state: InsightsUiState) {
+    val selectedChartState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val selectedChart = selectedChartState.intValue
+    val options = listOf("Duration", "Consistency", "Debt")
+
     ExpressiveCard {
         SectionHeader(title = "Trends")
         Spacer(modifier = Modifier.height(16.dp))
-        val currentAvg = state.insights.averageDurationMillis
-        val previousAvg = state.previousInsights?.averageDurationMillis ?: currentAvg
         
-        val diff = currentAvg - previousAvg
-        val diffPercent = if (previousAvg > 0) (diff.toDouble() / previousAvg * 100).toInt() else 0
-        
-        val sign = if (diffPercent >= 0) "+" else ""
-        val trendText = "$sign$diffPercent% vs previous ${state.range.label.lowercase(Locale.getDefault())}"
-        val trendColor = if (diffPercent >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, label ->
+                SegmentedButton(
+                    selected = index == selectedChart,
+                    onClick = { selectedChartState.intValue = index },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
+                ) {
+                    Text(label)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
 
-        Text(
-            text = trendText,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = trendColor
-        )
+        val days = listOf("M", "T", "W", "T", "F", "S", "S")
+        val chartData = (1..7).map { dayOfWeek ->
+            val stat = state.weekdayStats[dayOfWeek] ?: WeekdayStats(0L, 100, 0)
+            val value = when (selectedChart) {
+                0 -> stat.durationMillis / 3_600_000f // Duration in hours
+                1 -> stat.consistencyPercent.toFloat() // Consistency %
+                else -> stat.debtMinutes.toFloat() / 60f // Debt in hours
+            }
+            com.sleeptracker.app.ui.components.BarData(
+                value = value,
+                label = days[dayOfWeek - 1]
+            )
+        }
         
-        Spacer(modifier = Modifier.height(16.dp))
-        val values = state.dailyTotals.entries.sortedBy { it.key }.takeLast(14)
-            .map { it.value / 3_600_000f }
-        BarChart(
-            values = values,
-            goalFraction = if (values.isNotEmpty()) {
-                val maxVal = values.max().coerceAtLeast(0.01f)
-                (state.sleepGoalMinutes / 60f) / maxVal
-            } else null
+        val maxIndex = chartData.indices.maxByOrNull { chartData[it].value } ?: 0
+        val finalData = chartData.mapIndexed { index, data ->
+            data.copy(isHighlight = index == maxIndex && data.value > 0)
+        }
+
+        val calloutText = if (finalData[maxIndex].value > 0) {
+            val dayName = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")[maxIndex]
+            val valueStr = when (selectedChart) {
+                0 -> TimeUtils.formatDurationShort((finalData[maxIndex].value * 3_600_000f).toLong())
+                1 -> "${finalData[maxIndex].value.toInt()}%"
+                else -> "${finalData[maxIndex].value.toInt()}h ${(finalData[maxIndex].value % 1 * 60).toInt()}m"
+            }
+            val prefix = when (selectedChart) {
+                0 -> "Best night:"
+                1 -> "Most consistent:"
+                else -> "Highest debt:"
+            }
+            "$prefix $dayName, $valueStr"
+        } else null
+
+        com.sleeptracker.app.ui.components.BarChart(
+            data = finalData,
+            calloutText = calloutText
         )
     }
 }
@@ -168,24 +197,29 @@ fun ConsistencyScoreCard(state: InsightsUiState) {
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "${state.insights.consistencyPercent}%",
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
+            Box(contentAlignment = Alignment.Center) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    progress = { state.insights.consistencyPercent / 100f },
+                    modifier = Modifier.size(120.dp),
+                    color = MaterialTheme.colorScheme.secondary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    strokeWidth = 12.dp,
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                 )
-                Text(
-                    text = "Based on bedtime & wake variance",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "${state.insights.consistencyPercent}%",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             StatCard(
                 label = "Avg Bedtime",
@@ -195,6 +229,19 @@ fun ConsistencyScoreCard(state: InsightsUiState) {
             StatCard(
                 label = "Avg Wake Time",
                 value = state.insights.averageWakeMinutesOfDay?.let { minutesToClock(it) } ?: "—",
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            StatCard(
+                label = "Current Streak",
+                value = "${state.insights.currentStreakDays} days",
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                label = "Total Sessions",
+                value = "${state.insights.sessionCount}",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -296,18 +343,6 @@ fun RecordsSection(state: InsightsUiState) {
                 StatCard(
                     label = "Shortest Sleep",
                     value = TimeUtils.formatDurationShort(state.insights.shortestDurationMillis),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                StatCard(
-                    label = "Best Streak",
-                    value = "${state.insights.currentStreakDays} days",
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    label = "Sleep Debt",
-                    value = TimeUtils.formatMinutesAsHoursMinutes(state.insights.sleepDebtMinutes),
                     modifier = Modifier.weight(1f)
                 )
             }

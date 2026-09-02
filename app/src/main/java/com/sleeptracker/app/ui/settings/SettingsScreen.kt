@@ -245,9 +245,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         onWidthChange = viewModel::setFontWidthAxis,
                         onRoundnessChange = viewModel::setFontRoundnessAxis,
                         onReset = {
-                            viewModel.setFontWeightAxis(GoogleSansFlexAxes.WEIGHT_MAX)
-                            viewModel.setFontWidthAxis(GoogleSansFlexAxes.WIDTH_MAX)
-                            viewModel.setFontRoundnessAxis(GoogleSansFlexAxes.ROUNDNESS_MAX)
+                            viewModel.setFontWeightAxis(500f)
+                            viewModel.setFontWidthAxis(100f)
+                            viewModel.setFontRoundnessAxis(50f)
                         }
                     )
                 }

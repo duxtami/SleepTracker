@@ -21,11 +21,18 @@ enum class InsightsRange(val label: String, val days: Long?) {
     ALL_TIME("All Time", null)
 }
 
+data class WeekdayStats(
+    val durationMillis: Long,
+    val consistencyPercent: Int,
+    val debtMinutes: Int
+)
+
 data class InsightsUiState(
     val range: InsightsRange = InsightsRange.WEEKLY,
     val insights: SleepInsights = SleepInsights(0, 0, 0, 0, 0, 0, 0, null, null, 0),
     val previousInsights: SleepInsights? = null,
     val dailyTotals: Map<String, Long> = emptyMap(),
+    val weekdayStats: Map<Int, WeekdayStats> = emptyMap(),
     val hasEnoughData: Boolean = false,
     val sleepGoalMinutes: Int = 480
 )
@@ -52,11 +59,25 @@ class InsightsViewModel(
 
         val hasEnoughData = scoped.isNotEmpty()
 
+        val weekdayStats = (1..7).associateWith { dayOfWeek ->
+            val daySessions = scoped.filter { s ->
+                val date = s.startInstant.atZone(s.zone).toLocalDate()
+                date.dayOfWeek.value == dayOfWeek
+            }
+            if (daySessions.isEmpty()) {
+                WeekdayStats(0L, 100, 0)
+            } else {
+                val ins = SleepCalculator.computeInsights(daySessions, settings.sleepGoalMinutes)
+                WeekdayStats(ins.averageDurationMillis, ins.consistencyPercent, ins.sleepDebtMinutes)
+            }
+        }
+
         InsightsUiState(
             range = range,
             insights = SleepCalculator.computeInsights(scoped, settings.sleepGoalMinutes),
             previousInsights = previousScoped?.let { SleepCalculator.computeInsights(it, settings.sleepGoalMinutes) },
             dailyTotals = SleepCalculator.dailyTotals(scoped),
+            weekdayStats = weekdayStats,
             hasEnoughData = hasEnoughData,
             sleepGoalMinutes = settings.sleepGoalMinutes
         )

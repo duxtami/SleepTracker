@@ -95,7 +95,7 @@ fun SleepOrb(
     val endColor = if (isActive) lerp(primary, Color.Black, 0.22f) else lerp(primary, Color.Black, 0.15f)
 
     val endColorArgb = endColor.toArgb()
-    val textColor = MaterialTheme.colorScheme.onPrimary
+    val textColor = MaterialTheme.colorScheme.onPrimaryContainer
 
     Box(
         modifier = modifier
