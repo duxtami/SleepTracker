@@ -94,6 +94,8 @@ fun InsightsScreen(viewModel: InsightsViewModel, modifier: Modifier = Modifier) 
                         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
                             HeroStat(targetState)
                             TrendsSection(targetState)
+                            WeeklyRhythmSection(targetState)
+                            SleepBreakdownSection(targetState)
                             ConsistencyScoreCard(targetState)
                             CalendarView(targetState)
                             RecordsSection(targetState)
@@ -128,12 +130,117 @@ fun HeroStat(state: InsightsUiState) {
 
 @Composable
 fun TrendsSection(state: InsightsUiState) {
+    ExpressiveCard {
+        SectionHeader(title = "Trends")
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        val formatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+        // Take at most 14 days for the chart
+        val recentSessions = state.chronologicalData.takeLast(14)
+        
+        val chartData = recentSessions.map { session ->
+            val date = session.startInstant.atZone(session.zone).toLocalDate()
+            val dateStr = date.format(formatter)
+            val hours = session.durationMillis / 3600000f
+            com.sleeptracker.app.ui.components.BarData(
+                value = hours,
+                label = date.dayOfMonth.toString(), // Short label for x-axis
+                tooltipText = dateStr + "\n" + TimeUtils.formatDurationShort(session.durationMillis)
+            )
+        }
+        
+        if (chartData.isNotEmpty()) {
+            com.sleeptracker.app.ui.components.BarChart(
+                data = chartData,
+                yAxisLabelFormatter = { "${it.toInt()}h" }
+            )
+        } else {
+            Text("Not enough data to show trends", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+fun SleepBreakdownSection(state: InsightsUiState) {
+    if (state.chronologicalData.isEmpty()) return
+    
+    val goodCount = state.chronologicalData.count { it.durationMillis >= 7 * 3600000L }
+    val fairCount = state.chronologicalData.count { it.durationMillis in (5 * 3600000L)..(7 * 3600000L - 1) }
+    val poorCount = state.chronologicalData.count { it.durationMillis < 5 * 3600000L }
+    val total = (goodCount + fairCount + poorCount).coerceAtLeast(1)
+    
+    val goodPct = (goodCount.toFloat() / total * 100).toInt()
+    val fairPct = (fairCount.toFloat() / total * 100).toInt()
+    val poorPct = (poorCount.toFloat() / total * 100).toInt()
+
+    val goodColor = MaterialTheme.colorScheme.primary
+    val fairColor = MaterialTheme.colorScheme.tertiary
+    val poorColor = MaterialTheme.colorScheme.error
+
+    ExpressiveCard {
+        SectionHeader(title = "Sleep Breakdown")
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.size(120.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Canvas(modifier = Modifier.size(120.dp)) {
+                    val strokeWidth = 24.dp.toPx()
+                    var currentStartAngle = -90f
+                    
+                    val drawArcSegment = { count: Int, color: Color ->
+                        if (count > 0) {
+                            val sweepAngle = (count.toFloat() / total) * 360f
+                            drawArc(
+                                color = color,
+                                startAngle = currentStartAngle,
+                                sweepAngle = sweepAngle - 2f, // 2f gap
+                                useCenter = false,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth)
+                            )
+                            currentStartAngle += sweepAngle
+                        }
+                    }
+                    
+                    drawArcSegment(goodCount, goodColor)
+                    drawArcSegment(fairCount, fairColor)
+                    drawArcSegment(poorCount, poorColor)
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("$total", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("nights", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(32.dp))
+            
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                val drawLegendRow = @Composable { label: String, count: Int, pct: Int, color: Color ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(color))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(label, style = MaterialTheme.typography.labelMedium)
+                            Text("$pct% ($count nights)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                if (goodCount > 0) drawLegendRow("Good (7h+)", goodCount, goodPct, goodColor)
+                if (fairCount > 0) drawLegendRow("Fair (5-7h)", fairCount, fairPct, fairColor)
+                if (poorCount > 0) drawLegendRow("Poor (<5h)", poorCount, poorPct, poorColor)
+            }
+        }
+    }
+}
+
+@Composable
+fun WeeklyRhythmSection(state: InsightsUiState) {
     val selectedChartState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val selectedChart = selectedChartState.intValue
     val options = listOf("Duration", "Consistency", "Debt")
 
     ExpressiveCard {
-        SectionHeader(title = "Trends")
+        SectionHeader(title = "Weekly Rhythm")
         Spacer(modifier = Modifier.height(16.dp))
         
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -141,7 +248,8 @@ fun TrendsSection(state: InsightsUiState) {
                 SegmentedButton(
                     selected = index == selectedChart,
                     onClick = { selectedChartState.intValue = index },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text(label)
                 }

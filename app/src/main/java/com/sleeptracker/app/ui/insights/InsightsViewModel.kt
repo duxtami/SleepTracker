@@ -33,6 +33,7 @@ data class InsightsUiState(
     val previousInsights: SleepInsights? = null,
     val dailyTotals: Map<String, Long> = emptyMap(),
     val weekdayStats: Map<Int, WeekdayStats> = emptyMap(),
+    val chronologicalData: List<com.sleeptracker.app.data.model.SleepSession> = emptyList(),
     val hasEnoughData: Boolean = false,
     val sleepGoalMinutes: Int = 480
 )
@@ -76,8 +77,9 @@ class InsightsViewModel(
             range = range,
             insights = SleepCalculator.computeInsights(scoped, settings.sleepGoalMinutes),
             previousInsights = previousScoped?.let { SleepCalculator.computeInsights(it, settings.sleepGoalMinutes) },
-            dailyTotals = SleepCalculator.dailyTotals(scoped),
+            dailyTotals = SleepCalculator.dailyTotals(sessions),
             weekdayStats = weekdayStats,
+            chronologicalData = scoped.sortedBy { it.startEpochMillis },
             hasEnoughData = hasEnoughData,
             sleepGoalMinutes = settings.sleepGoalMinutes
         )

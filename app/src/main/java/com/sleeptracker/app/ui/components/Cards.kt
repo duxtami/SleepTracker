@@ -56,7 +56,7 @@ fun StatCard(
     modifier: Modifier = Modifier,
     caption: String? = null
 ) {
-    ExpressiveCard(modifier = modifier, contentPadding = PaddingValues(16.dp)) {
+    ExpressiveCard(modifier = modifier, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentPadding = PaddingValues(16.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,

@@ -859,7 +859,7 @@ internal fun SessionEditorSheet(
                             recentPeriods = BedtimeDetector.findRecentScreenOffPeriods(context, settings, smartAnalyzeEnabled)
                         }.padding(vertical = 8.dp)
                     ) {
-                        Text("Smart Analyze (merge short wake-ups)", style = MaterialTheme.typography.bodyMedium)
+                        Text("Smart Analyze (merge short wake-ups)", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(end = 16.dp))
                         androidx.compose.material3.Switch(
                             checked = smartAnalyzeEnabled,
                             onCheckedChange = {

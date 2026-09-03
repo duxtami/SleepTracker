@@ -95,7 +95,7 @@ fun SleepOrb(
     val endColor = if (isActive) lerp(primary, Color.Black, 0.22f) else lerp(primary, Color.Black, 0.15f)
 
     val endColorArgb = endColor.toArgb()
-    val textColor = MaterialTheme.colorScheme.onPrimaryContainer
+    val textColor = Color.White
 
     Box(
         modifier = modifier
@@ -153,7 +153,12 @@ fun SleepOrb(
 
         Text(
             text = if (isActive) "Tap to end" else "Tap to sleep",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleMedium.copy(
+                shadow = androidx.compose.ui.graphics.Shadow(
+                    color = Color.White.copy(alpha = 0.5f),
+                    blurRadius = 12f
+                )
+            ),
             color = textColor
         )
     }

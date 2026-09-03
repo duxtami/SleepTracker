@@ -5,28 +5,45 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.TextStyle
+import kotlin.math.roundToInt
 
 data class BarData(
     val value: Float,
     val label: String,
+    val tooltipText: String? = null,
     val isHighlight: Boolean = false
 )
 
@@ -37,13 +54,13 @@ fun BarChart(
     barColor: Color = MaterialTheme.colorScheme.primary,
     highlightColor: Color = MaterialTheme.colorScheme.tertiary,
     height: androidx.compose.ui.unit.Dp = 160.dp,
-    calloutText: String? = null
+    calloutText: String? = null,
+    yAxisLabelFormatter: (Float) -> String = { it.toInt().toString() }
 ) {
     if (data.isEmpty()) return
 
     val maxValue = (data.maxOfOrNull { it.value } ?: 1f).coerceAtLeast(0.01f)
     
-    // Animation for all bars to grow from the bottom
     val animationProgress = remember { Animatable(0f) }
     LaunchedEffect(data) {
         animationProgress.snapTo(0f)
@@ -55,63 +72,143 @@ fun BarChart(
 
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    
+    val textMeasurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = labelColor)
+    val tooltipStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.inverseOnSurface, fontWeight = FontWeight.Bold)
+
+    var pressedIndex by remember { mutableStateOf<Int?>(null) }
+    var pressOffset by remember { mutableStateOf(Offset.Zero) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
+                .pointerInput(data) {
+                    detectDragGestures(
+                        onDragStart = { offset -> pressOffset = offset },
+                        onDragEnd = { pressedIndex = null },
+                        onDragCancel = { pressedIndex = null },
+                        onDrag = { change, _ ->
+                            pressOffset = change.position
+                        }
+                    )
+                }
+                .pointerInput(data) {
+                    detectTapGestures(
+                        onPress = { offset ->
+                            pressOffset = offset
+                            tryAwaitRelease()
+                            pressedIndex = null
+                        }
+                    )
+                }
         ) {
+            val yAxisWidth = 32.dp.toPx()
+            val canvasWidth = size.width - yAxisWidth
+            val canvasHeight = size.height - 24.dp.toPx() // Reserve space for X-axis labels
+
+            // Gridlines & Y-axis labels
+            val steps = 3
+            for (i in 0..steps) {
+                val y = canvasHeight - (i.toFloat() / steps) * canvasHeight
+                val valueAtGrid = (i.toFloat() / steps) * maxValue
+                
+                drawLine(
+                    color = gridColor,
+                    start = Offset(yAxisWidth, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+                
+                val yLabel = yAxisLabelFormatter(valueAtGrid)
+                val textLayoutResult = textMeasurer.measure(yLabel, style = labelStyle)
+                drawText(
+                    textLayoutResult = textLayoutResult,
+                    topLeft = Offset(yAxisWidth - textLayoutResult.size.width - 8.dp.toPx(), y - textLayoutResult.size.height / 2f)
+                )
+            }
+
             val barSpacing = 8.dp.toPx()
             val totalSpacing = barSpacing * (data.size - 1)
-            val barWidth = (size.width - totalSpacing) / data.size
+            val barWidth = (canvasWidth - totalSpacing) / data.size
+
+            var newPressedIndex: Int? = null
 
             data.forEachIndexed { index, item ->
-                val targetBarHeight = (item.value / maxValue) * size.height
+                val targetBarHeight = (item.value / maxValue) * canvasHeight
                 val barHeight = targetBarHeight * animationProgress.value
-                val left = index * (barWidth + barSpacing)
+                val left = yAxisWidth + index * (barWidth + barSpacing)
                 
                 // Draw background track
                 drawRoundRect(
                     color = trackColor.copy(alpha = 0.5f),
                     topLeft = Offset(left, 0f),
-                    size = Size(barWidth, size.height),
+                    size = Size(barWidth, canvasHeight),
                     cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
                 )
 
                 // Draw actual bar
                 val color = if (item.isHighlight) highlightColor else barColor
+                val barTop = canvasHeight - barHeight
                 drawRoundRect(
                     color = color,
-                    topLeft = Offset(left, size.height - barHeight),
+                    topLeft = Offset(left, barTop),
                     size = Size(barWidth, barHeight),
                     cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
                 )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        // Labels
-        androidx.compose.foundation.layout.Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
-        ) {
-            data.forEach { item ->
-                Text(
-                    text = item.label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (item.isHighlight) highlightColor else labelColor,
-                    fontWeight = if (item.isHighlight) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.weight(1f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-            }
-        }
 
+                // X-axis label
+                val xLabelResult = textMeasurer.measure(item.label, style = labelStyle.copy(fontWeight = if (item.isHighlight) FontWeight.Bold else FontWeight.Normal, color = if (item.isHighlight) highlightColor else labelColor))
+                drawText(
+                    textLayoutResult = xLabelResult,
+                    topLeft = Offset(left + (barWidth - xLabelResult.size.width) / 2f, canvasHeight + 8.dp.toPx())
+                )
+
+                if (pressOffset.x >= left && pressOffset.x <= left + barWidth) {
+                    newPressedIndex = index
+                }
+            }
+
+            pressedIndex = newPressedIndex
+
+            // Draw Tooltip
+            pressedIndex?.let { idx ->
+                val item = data[idx]
+                if (item.tooltipText != null) {
+                    val tooltipLayout = textMeasurer.measure(item.tooltipText, style = tooltipStyle)
+                    val tooltipPadding = 8.dp.toPx()
+                    val tooltipWidth = tooltipLayout.size.width + tooltipPadding * 2
+                    val tooltipHeight = tooltipLayout.size.height + tooltipPadding * 2
+                    
+                    val left = yAxisWidth + idx * (barWidth + barSpacing)
+                    val barCenter = left + barWidth / 2f
+                    var tooltipX = barCenter - tooltipWidth / 2f
+                    tooltipX = tooltipX.coerceIn(0f, size.width - tooltipWidth)
+                    val barTop = canvasHeight - (item.value / maxValue) * canvasHeight
+                    var tooltipY = barTop - tooltipHeight - 8.dp.toPx()
+                    if (tooltipY < 0) tooltipY = barTop + 8.dp.toPx()
+
+                    drawRoundRect(
+                        color = Color(0xFF1E1E1E), // InverseSurface-like
+                        topLeft = Offset(tooltipX, tooltipY),
+                        size = Size(tooltipWidth, tooltipHeight),
+                        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                    )
+                    drawText(
+                        textLayoutResult = tooltipLayout,
+                        topLeft = Offset(tooltipX + tooltipPadding, tooltipY + tooltipPadding)
+                    )
+                }
+            }
+        }
+        
         if (calloutText != null) {
             Spacer(modifier = Modifier.height(16.dp))
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
@@ -121,12 +218,20 @@ fun BarChart(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = calloutText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontWeight = FontWeight.SemiBold
-                )
+                androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Icon(
+                        Icons.Filled.Star, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(end = 8.dp).size(16.dp)
+                    )
+                    Text(
+                        text = calloutText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
     }

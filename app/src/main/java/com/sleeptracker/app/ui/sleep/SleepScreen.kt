@@ -107,33 +107,31 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item {
-                Text(
-                    text = "Home",
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            item {
-                val phase = state.phase
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = state.greeting,
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold
+                        text = "Home",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = when (phase) {
-                            is TrackingPhase.Tracking -> if (phase.session.isPaused) "Paused" else "Sleeping since ${TimeUtils.formatTime(phase.session.startEpochMillis)}"
-                            is TrackingPhase.Waiting -> "Sleep tracking begins at ${TimeUtils.formatTime(phase.plannedStartEpochMillis)}"
-                            TrackingPhase.Idle -> "Ready when you are"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    val phase = state.phase
+                    Column {
+                        Text(
+                            text = state.greeting,
+                            style = MaterialTheme.typography.displaySmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = when (phase) {
+                                is TrackingPhase.Tracking -> if (phase.session.isPaused) "Paused" else "Sleeping since ${TimeUtils.formatTime(phase.session.startEpochMillis)}"
+                                is TrackingPhase.Waiting -> "Sleep tracking begins at ${TimeUtils.formatTime(phase.plannedStartEpochMillis)}"
+                                TrackingPhase.Idle -> "Ready when you are"
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
             }
 
@@ -183,7 +181,7 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                             color = textColor
                         )
                         Text(
-                            text = "Over the last 7 days",
+                            text = "Last night's sleep",
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isSignificant) MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)

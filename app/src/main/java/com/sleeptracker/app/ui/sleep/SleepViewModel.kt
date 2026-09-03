@@ -97,10 +97,9 @@ class SleepViewModel(
             )
             else -> TrackingPhase.Idle
         }
-        
-        val cutoff = java.time.Instant.now().minus(7, java.time.temporal.ChronoUnit.DAYS).toEpochMilli()
-        val recentSessions = sessions.filter { it.startEpochMillis >= cutoff }
-        val insights = com.sleeptracker.app.util.SleepCalculator.computeInsights(recentSessions, settings.sleepGoalMinutes)
+        val debt = last?.let {
+            (settings.sleepGoalMinutes - (it.durationMillis / 60000).toInt()).coerceAtLeast(0)
+        } ?: 0
 
         SleepUiState(
             greeting = com.sleeptracker.app.util.TimeUtils.greeting(),
@@ -108,7 +107,7 @@ class SleepViewModel(
             lastCompletedSession = last,
             settings = settings,
             errorMessage = error,
-            recentSleepDebtMinutes = insights.sleepDebtMinutes
+            recentSleepDebtMinutes = debt
         )
     }
 
