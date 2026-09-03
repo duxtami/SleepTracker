@@ -121,16 +121,6 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = when (phase) {
-                                is TrackingPhase.Tracking -> if (phase.session.isPaused) "Paused" else "Sleeping since ${TimeUtils.formatTime(phase.session.startEpochMillis)}"
-                                is TrackingPhase.Waiting -> "Sleep tracking begins at ${TimeUtils.formatTime(phase.plannedStartEpochMillis)}"
-                                TrackingPhase.Idle -> "Ready when you are"
-                            },
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
                     }
                 }
             }

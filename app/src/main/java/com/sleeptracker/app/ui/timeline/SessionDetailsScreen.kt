@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.text.drawText
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -292,57 +293,101 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
 
 @Composable
 private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awakePeriods: List<Pair<Long, Long>>) {
-    val zone = java.time.ZoneId.systemDefault()
-    val startTime = java.time.Instant.ofEpochMilli(startEpochMillis).atZone(zone).toLocalTime()
-    val endTime = java.time.Instant.ofEpochMilli(endEpochMillis).atZone(zone).toLocalTime()
-    val startFraction = (startTime.toSecondOfDay().toFloat()) / 86400f
-    val rawEndFraction = (endTime.toSecondOfDay().toFloat()) / 86400f
-    val endFraction = (if (rawEndFraction < startFraction) rawEndFraction + 1f else rawEndFraction).coerceAtMost(1f)
-    val durationFraction = (endFraction - startFraction).coerceIn(0.02f, 1f - startFraction)
-    val trailingFraction = (1f - startFraction - durationFraction).coerceAtLeast(0f)
+    val durationMillis = (endEpochMillis - startEpochMillis).coerceAtLeast(1L)
+    val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val barColor = MaterialTheme.colorScheme.primary
+    val awakeColor = MaterialTheme.colorScheme.error
 
-    Row(
+    androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(28.dp)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.small)
+            .height(140.dp)
+            .padding(vertical = 8.dp)
     ) {
-        if (startFraction > 0f) {
-            Box(modifier = Modifier.weight(startFraction))
-        }
-        Box(
-            modifier = Modifier
-                .weight(durationFraction)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small)
-        ) {
-            // Draw awake markers
-            val sessionDuration = endEpochMillis - startEpochMillis
-            if (sessionDuration > 0) {
-                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                    awakePeriods.forEach { (awakeStart, awakeEnd) ->
-                        val startOffset = ((awakeStart - startEpochMillis).toFloat() / sessionDuration).coerceIn(0f, 1f)
-                        val endOffset = ((awakeEnd - startEpochMillis).toFloat() / sessionDuration).coerceIn(0f, 1f)
-                        
-                        val startX = startOffset * size.width
-                        val endX = endOffset * size.width
-                        
-                        drawRect(
-                            color = androidx.compose.ui.graphics.Color.Red.copy(alpha = 0.6f),
-                            topLeft = androidx.compose.ui.geometry.Offset(startX, 0f),
-                            size = androidx.compose.ui.geometry.Size((endX - startX).coerceAtLeast(2.dp.toPx()), size.height)
-                        )
-                    }
-                }
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val canvasWidth = size.width
+            val canvasHeight = size.height - 24.dp.toPx() // Reserve space for X-axis labels
+            
+            // Draw horizontal grid lines (0, 50%, 100%)
+            for (i in 0..2) {
+                val y = (i / 2f) * canvasHeight
+                drawLine(
+                    color = gridColor,
+                    start = androidx.compose.ui.geometry.Offset(0f, y),
+                    end = androidx.compose.ui.geometry.Offset(canvasWidth, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+            }
+
+            val barTop = canvasHeight * 0.2f
+            val barBottom = canvasHeight
+            val barHeight = barBottom - barTop
+            val cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx(), 8.dp.toPx())
+            
+            // Draw main sleep bar (background)
+            drawRoundRect(
+                color = barColor.copy(alpha = 0.3f),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, barTop),
+                size = androidx.compose.ui.geometry.Size(canvasWidth, barHeight),
+                cornerRadius = cornerRadius
+            )
+            
+            // Draw solid sleep parts by subtracting awake periods (or just draw awake periods over it)
+            drawRoundRect(
+                color = barColor,
+                topLeft = androidx.compose.ui.geometry.Offset(0f, barTop),
+                size = androidx.compose.ui.geometry.Size(canvasWidth, barHeight),
+                cornerRadius = cornerRadius
+            )
+            
+            // Draw awake periods
+            awakePeriods.forEach { (awakeStart, awakeEnd) ->
+                val startOffset = ((awakeStart - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)
+                val endOffset = ((awakeEnd - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)
+                
+                val startX = startOffset * canvasWidth
+                val endX = endOffset * canvasWidth
+                
+                drawRect(
+                    color = awakeColor,
+                    topLeft = androidx.compose.ui.geometry.Offset(startX, barTop),
+                    size = androidx.compose.ui.geometry.Size((endX - startX).coerceAtLeast(2.dp.toPx()), barHeight)
+                )
+            }
+
+            // Draw X-axis labels
+            val startText = TimeUtils.formatTime(startEpochMillis)
+            val endText = TimeUtils.formatTime(endEpochMillis)
+            
+            val startLayout = textMeasurer.measure(startText, style = labelStyle)
+            val endLayout = textMeasurer.measure(endText, style = labelStyle)
+            
+            drawText(
+                textLayoutResult = startLayout,
+                topLeft = androidx.compose.ui.geometry.Offset(0f, canvasHeight + 8.dp.toPx())
+            )
+            
+            drawText(
+                textLayoutResult = endLayout,
+                topLeft = androidx.compose.ui.geometry.Offset(canvasWidth - endLayout.size.width, canvasHeight + 8.dp.toPx())
+            )
+            
+            // Optionally draw middle time if wide enough
+            val midMillis = startEpochMillis + (durationMillis / 2)
+            val midText = TimeUtils.formatTime(midMillis)
+            val midLayout = textMeasurer.measure(midText, style = labelStyle)
+            val midX = (canvasWidth - midLayout.size.width) / 2f
+            
+            // Only draw if it doesn't overlap
+            if (midX > startLayout.size.width + 16.dp.toPx() && midX + midLayout.size.width < canvasWidth - endLayout.size.width - 16.dp.toPx()) {
+                drawText(
+                    textLayoutResult = midLayout,
+                    topLeft = androidx.compose.ui.geometry.Offset(midX, canvasHeight + 8.dp.toPx())
+                )
             }
         }
-        if (trailingFraction > 0f) {
-            Box(modifier = Modifier.weight(trailingFraction))
-        }
-    }
-    Spacer(modifier = Modifier.height(8.dp))
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(TimeUtils.formatTime(startEpochMillis), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(TimeUtils.formatTime(endEpochMillis), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

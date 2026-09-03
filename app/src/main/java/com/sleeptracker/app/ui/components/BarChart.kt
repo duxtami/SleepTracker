@@ -44,7 +44,8 @@ data class BarData(
     val value: Float,
     val label: String,
     val tooltipText: String? = null,
-    val isHighlight: Boolean = false
+    val isHighlight: Boolean = false,
+    val isToday: Boolean = false
 )
 
 @Composable
@@ -77,6 +78,7 @@ fun BarChart(
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = labelColor)
     val tooltipStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.inverseOnSurface, fontWeight = FontWeight.Bold)
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
     var pressedIndex by remember { mutableStateOf<Int?>(null) }
     var pressOffset by remember { mutableStateOf(Offset.Zero) }
@@ -160,9 +162,22 @@ fun BarChart(
                     size = Size(barWidth, barHeight),
                     cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
                 )
+                
+                // Draw 'Today' outline
+                if (item.isToday) {
+                    drawRoundRect(
+                        color = onSurfaceColor,
+                        topLeft = Offset(left - 2.dp.toPx(), barTop - 2.dp.toPx()),
+                        size = Size(barWidth + 4.dp.toPx(), barHeight + 4.dp.toPx()),
+                        cornerRadius = CornerRadius((barWidth + 4.dp.toPx()) / 2.5f, (barWidth + 4.dp.toPx()) / 2.5f),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                    )
+                }
 
                 // X-axis label
-                val xLabelResult = textMeasurer.measure(item.label, style = labelStyle.copy(fontWeight = if (item.isHighlight) FontWeight.Bold else FontWeight.Normal, color = if (item.isHighlight) highlightColor else labelColor))
+                val xLabelColor = if (item.isToday) onSurfaceColor else if (item.isHighlight) highlightColor else labelColor
+                val xLabelWeight = if (item.isToday || item.isHighlight) FontWeight.Bold else FontWeight.Normal
+                val xLabelResult = textMeasurer.measure(item.label, style = labelStyle.copy(fontWeight = xLabelWeight, color = xLabelColor))
                 drawText(
                     textLayoutResult = xLabelResult,
                     topLeft = Offset(left + (barWidth - xLabelResult.size.width) / 2f, canvasHeight + 8.dp.toPx())

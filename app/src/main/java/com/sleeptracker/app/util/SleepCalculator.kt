@@ -43,8 +43,12 @@ object SleepCalculator {
 
         val streak = currentStreakDays(done)
 
-        val avgDurationMinutes = (average / 60000L).toInt()
-        val debtMinutes = (sleepGoalMinutes - avgDurationMinutes).coerceAtLeast(0)
+        val daily = dailyTotals(done)
+        val debtMinutes = if (daily.isEmpty()) 0 else {
+            val totalGoal = daily.size * sleepGoalMinutes
+            val totalMins = (daily.values.sum() / 60000L).toInt()
+            (totalGoal - totalMins).coerceAtLeast(0)
+        }
 
         val avgBedtime = circularAverageMinutes(bedtimeMinutes)
         val wakeMinutes = done.mapNotNull { s -> s.endInstant?.let { minutesSinceMidnight(it, s.zone) } }
@@ -101,19 +105,25 @@ object SleepCalculator {
 
     private fun currentStreakDays(done: List<SleepSession>): Int {
         if (done.isEmpty()) return 0
-        val sortedDesc = done.sortedByDescending { it.startEpochMillis }
+        val uniqueDays = done.map { it.startInstant.atZone(it.zone).toLocalDate() }
+            .distinct()
+            .sortedDescending()
+            
+        if (uniqueDays.isEmpty()) return 0
+        
+        val today = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+        
+        if (uniqueDays.first().isBefore(today.minusDays(1))) {
+            return 0
+        }
+        
         var streak = 0
-        var expectedDay = ZonedDateTime.now(sortedDesc.first().zone).toLocalDate()
-        for (session in sortedDesc) {
-            val day = session.startInstant.atZone(session.zone).toLocalDate()
-            val diff = ChronoUnit.DAYS.between(day, expectedDay)
-            if (diff == 0L) {
+        var currentCheck = if (uniqueDays.first() == today) today else today.minusDays(1)
+        
+        for (day in uniqueDays) {
+            if (day == currentCheck) {
                 streak++
-                expectedDay = expectedDay.minusDays(1)
-            } else if (diff == 1L) {
-                // allows the "today not yet slept" case to still count yesterday's streak
-                streak++
-                expectedDay = day.minusDays(1)
+                currentCheck = currentCheck.minusDays(1)
             } else {
                 break
             }
