@@ -277,7 +277,7 @@ fun TimelineScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     state.groups.forEach { group ->
-                        val isExpanded = expandedMonths.value.contains(group.monthKey) || state.groups.size == 1
+                        val isExpanded = state.searchQuery.isNotBlank() || expandedMonths.value.contains(group.monthKey) || state.groups.size == 1
                         item(key = "header_${group.monthKey}") {
                             val rotation by animateFloatAsState(
                                 targetValue = if (isExpanded) 180f else 0f,

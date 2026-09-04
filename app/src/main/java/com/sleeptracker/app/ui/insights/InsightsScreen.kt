@@ -280,22 +280,28 @@ fun WeeklyRhythmSection(state: InsightsUiState) {
             )
         }
         
-        val maxIndex = chartData.indices.maxByOrNull { chartData[it].value } ?: 0
+        val targetIndex = if (selectedChart == 2) {
+            chartData.indices.filter { !chartData[it].isEmpty }.minByOrNull { chartData[it].value } ?: 0
+        } else {
+            chartData.indices.maxByOrNull { chartData[it].value } ?: 0
+        }
         val finalData = chartData.mapIndexed { index, data ->
-            data.copy(isHighlight = index == maxIndex && data.value > 0)
+            val shouldHighlight = index == targetIndex && !data.isEmpty && (selectedChart == 2 || data.value > 0)
+            data.copy(isHighlight = shouldHighlight)
         }
 
-        val calloutText = if (finalData[maxIndex].value > 0) {
-            val dayName = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")[maxIndex]
+        val calloutText = if (finalData.any { it.isHighlight }) {
+            val idx = finalData.indexOfFirst { it.isHighlight }
+            val dayName = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")[idx]
             val valueStr = when (selectedChart) {
-                0 -> TimeUtils.formatDurationShort((finalData[maxIndex].value * 3_600_000f).toLong())
-                1 -> "${finalData[maxIndex].value.toInt()}%"
-                else -> "${finalData[maxIndex].value.toInt()}h ${(finalData[maxIndex].value % 1 * 60).toInt()}m"
+                0 -> TimeUtils.formatDurationShort((finalData[idx].value * 3_600_000f).toLong())
+                1 -> "${finalData[idx].value.toInt()}%"
+                else -> if (finalData[idx].value >= 1f) "${finalData[idx].value.toInt()}h ${(finalData[idx].value % 1 * 60).toInt()}m" else "${(finalData[idx].value % 1 * 60).toInt()}m"
             }
             val prefix = when (selectedChart) {
                 0 -> "Best night:"
                 1 -> "Most consistent:"
-                else -> "Highest debt:"
+                else -> "Lowest debt:"
             }
             "$prefix $dayName, $valueStr"
         } else null
@@ -504,12 +510,10 @@ fun RhythmChart(state: InsightsUiState) {
             val startInstant = java.time.Instant.ofEpochMilli(session.startEpochMillis).atZone(zone)
             val endInstant = java.time.Instant.ofEpochMilli(endMillis).atZone(zone)
             
-            var current = startInstant.truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-            val endTruncated = endInstant.plusHours(1).truncatedTo(java.time.temporal.ChronoUnit.HOURS)
-            
-            while (current.isBefore(endTruncated)) {
+            var current = startInstant
+            while (current.isBefore(endInstant)) {
                 hourlyCounts[current.hour] += 1f
-                current = current.plusHours(1)
+                current = current.truncatedTo(java.time.temporal.ChronoUnit.HOURS).plusHours(1)
             }
             totalValid++
         }

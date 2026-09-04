@@ -157,6 +157,12 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
             item {
                 ExpressiveCard {
                     SectionHeader(title = "Timeline")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Your sleep states throughout the night. Dips indicate time spent awake.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     NightTimelineBar(
                         startEpochMillis = session.startEpochMillis,
@@ -337,10 +343,9 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
                 topLeft = androidx.compose.ui.geometry.Offset(chartLeft - awakeLabel.size.width - 8.dp.toPx(), canvasHeight - awakeLabel.size.height / 2f)
             )
 
-            // Draw Area Chart
             val path = androidx.compose.ui.graphics.Path()
-            path.moveTo(chartLeft, canvasHeight) // start at bottom
-            path.lineTo(chartLeft, 0f) // jump to asleep
+            path.moveTo(chartLeft, canvasHeight)
+            path.lineTo(chartLeft, 0f)
             
             val sortedAwake = awakePeriods.sortedBy { it.first }
             sortedAwake.forEach { (awakeStart, awakeEnd) ->
@@ -349,21 +354,10 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
                 val startX = chartLeft + startOffset * chartWidth
                 val endX = chartLeft + endOffset * chartWidth
                 
-                path.lineTo(startX, 0f) // remain asleep
-                // smooth cubic transition to awake? A steep cubic looks nice
-                path.cubicTo(
-                    startX + 2.dp.toPx(), 0f,
-                    startX + 2.dp.toPx(), canvasHeight,
-                    startX + 4.dp.toPx(), canvasHeight
-                )
-                // awake period
-                path.lineTo(endX - 4.dp.toPx(), canvasHeight)
-                // smooth cubic back to asleep
-                path.cubicTo(
-                    endX - 2.dp.toPx(), canvasHeight,
-                    endX - 2.dp.toPx(), 0f,
-                    endX, 0f
-                )
+                path.lineTo(startX, 0f)
+                path.lineTo(startX, canvasHeight)
+                path.lineTo(endX, canvasHeight)
+                path.lineTo(endX, 0f)
             }
             path.lineTo(chartLeft + chartWidth, 0f)
             path.lineTo(chartLeft + chartWidth, canvasHeight)
@@ -388,17 +382,9 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
                 val endX = chartLeft + endOffset * chartWidth
                 
                 linePath.lineTo(startX, 0f)
-                linePath.cubicTo(
-                    startX + 2.dp.toPx(), 0f,
-                    startX + 2.dp.toPx(), canvasHeight,
-                    startX + 4.dp.toPx(), canvasHeight
-                )
-                linePath.lineTo(endX - 4.dp.toPx(), canvasHeight)
-                linePath.cubicTo(
-                    endX - 2.dp.toPx(), canvasHeight,
-                    endX - 2.dp.toPx(), 0f,
-                    endX, 0f
-                )
+                linePath.lineTo(startX, canvasHeight)
+                linePath.lineTo(endX, canvasHeight)
+                linePath.lineTo(endX, 0f)
             }
             linePath.lineTo(chartLeft + chartWidth, 0f)
             

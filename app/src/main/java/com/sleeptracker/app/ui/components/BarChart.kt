@@ -283,7 +283,7 @@ fun BarChart(
                     if (tooltipY < 0) tooltipY = barTop + 8.dp.toPx()
 
                     drawRoundRect(
-                        color = Color(0xFF1E1E1E), // InverseSurface-like
+                        color = MaterialTheme.colorScheme.inverseSurface,
                         topLeft = Offset(tooltipX, tooltipY),
                         size = Size(tooltipWidth, tooltipHeight),
                         cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())

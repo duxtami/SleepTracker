@@ -41,9 +41,11 @@ class TimelineViewModel(
             completedOnly
         } else {
             completedOnly.filter { s ->
+                val dateStr = TimeUtils.formatDate(s.startEpochMillis)
                 s.notes.contains(query, ignoreCase = true) ||
                     s.tags.any { it.contains(query, ignoreCase = true) } ||
-                    (s.mood?.label?.contains(query, ignoreCase = true) == true)
+                    (s.mood?.label?.contains(query, ignoreCase = true) == true) ||
+                    dateStr.contains(query, ignoreCase = true)
             }
         }
         val groups = filtered
