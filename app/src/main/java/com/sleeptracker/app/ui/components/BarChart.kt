@@ -84,6 +84,7 @@ fun BarChart(
     val textMeasurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = labelColor)
     val tooltipStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.inverseOnSurface, fontWeight = FontWeight.Bold)
+    val tooltipBgColor = MaterialTheme.colorScheme.inverseSurface
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
     var pressedIndex by remember { mutableStateOf<Int?>(null) }
@@ -283,7 +284,7 @@ fun BarChart(
                     if (tooltipY < 0) tooltipY = barTop + 8.dp.toPx()
 
                     drawRoundRect(
-                        color = MaterialTheme.colorScheme.inverseSurface,
+                        color = tooltipBgColor,
                         topLeft = Offset(tooltipX, tooltipY),
                         size = Size(tooltipWidth, tooltipHeight),
                         cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
