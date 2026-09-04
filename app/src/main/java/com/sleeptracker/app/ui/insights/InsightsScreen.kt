@@ -152,6 +152,7 @@ fun TrendsSection(state: InsightsUiState) {
         if (chartData.isNotEmpty()) {
             com.sleeptracker.app.ui.components.BarChart(
                 data = chartData,
+                chartStyle = com.sleeptracker.app.ui.components.ChartStyle.Area,
                 yAxisLabelFormatter = { "${it.toInt()}h" }
             )
         } else {
@@ -259,7 +260,7 @@ fun WeeklyRhythmSection(state: InsightsUiState) {
                 }
             }
         }
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         val days = listOf("M", "T", "W", "T", "F", "S", "S")
         val todayDayOfWeek = java.time.LocalDate.now().dayOfWeek.value
@@ -270,10 +271,12 @@ fun WeeklyRhythmSection(state: InsightsUiState) {
                 1 -> stat.consistencyPercent.toFloat() // Consistency %
                 else -> stat.debtMinutes.toFloat() / 60f // Debt in hours
             }
+            val isEmpty = dayOfWeek > todayDayOfWeek
             com.sleeptracker.app.ui.components.BarData(
-                value = value,
+                value = if (isEmpty) 0f else value,
                 label = days[dayOfWeek - 1],
-                isToday = dayOfWeek == todayDayOfWeek
+                isToday = dayOfWeek == todayDayOfWeek,
+                isEmpty = isEmpty
             )
         }
         
@@ -297,10 +300,27 @@ fun WeeklyRhythmSection(state: InsightsUiState) {
             "$prefix $dayName, $valueStr"
         } else null
 
-        com.sleeptracker.app.ui.components.BarChart(
-            data = finalData,
-            calloutText = calloutText
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(16.dp)
+        ) {
+            com.sleeptracker.app.ui.components.BarChart(
+                data = finalData,
+                calloutText = calloutText,
+                yAxisLabelFormatter = {
+                    when (selectedChart) {
+                        0 -> "${it.toInt()}h"
+                        1 -> "${it.toInt()}%"
+                        else -> if (it >= 1f) "${it.toInt()}h ${(it % 1 * 60).toInt()}m" else "${(it % 1 * 60).toInt()}m"
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -510,6 +530,7 @@ fun RhythmChart(state: InsightsUiState) {
         
         com.sleeptracker.app.ui.components.BarChart(
             data = chartData,
+            chartStyle = com.sleeptracker.app.ui.components.ChartStyle.Area,
             yAxisLabelFormatter = { "${it.toInt()}%" }
         )
     }

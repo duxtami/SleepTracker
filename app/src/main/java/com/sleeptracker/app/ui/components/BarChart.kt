@@ -40,18 +40,24 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextStyle
 import kotlin.math.roundToInt
 
+enum class ChartStyle {
+    Bar, Line, Area
+}
+
 data class BarData(
     val value: Float,
     val label: String,
     val tooltipText: String? = null,
     val isHighlight: Boolean = false,
-    val isToday: Boolean = false
+    val isToday: Boolean = false,
+    val isEmpty: Boolean = false
 )
 
 @Composable
 fun BarChart(
     data: List<BarData>,
     modifier: Modifier = Modifier,
+    chartStyle: ChartStyle = ChartStyle.Bar,
     barColor: Color = MaterialTheme.colorScheme.primary,
     highlightColor: Color = MaterialTheme.colorScheme.tertiary,
     height: androidx.compose.ui.unit.Dp = 160.dp,
@@ -140,38 +146,107 @@ fun BarChart(
 
             var newPressedIndex: Int? = null
 
+            if (chartStyle == ChartStyle.Line || chartStyle == ChartStyle.Area) {
+                if (data.size > 1) {
+                    val xPositions = data.mapIndexed { index, _ -> yAxisWidth + index * (barWidth + barSpacing) + barWidth / 2f }
+                    val yPositions = data.map { item -> canvasHeight - ((item.value / maxValue) * canvasHeight) * animationProgress.value }
+                    
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(xPositions.first(), yPositions.first())
+                        for (i in 1 until data.size) {
+                            val cpX1 = (xPositions[i - 1] + xPositions[i]) / 2f
+                            cubicTo(
+                                cpX1, yPositions[i - 1],
+                                cpX1, yPositions[i],
+                                xPositions[i], yPositions[i]
+                            )
+                        }
+                    }
+                    if (chartStyle == ChartStyle.Area) {
+                        val areaPath = androidx.compose.ui.graphics.Path().apply {
+                            addPath(path)
+                            lineTo(xPositions.last(), canvasHeight)
+                            lineTo(xPositions.first(), canvasHeight)
+                            close()
+                        }
+                        drawPath(
+                            path = areaPath,
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(barColor.copy(alpha = 0.5f), Color.Transparent),
+                                startY = 0f,
+                                endY = canvasHeight
+                            )
+                        )
+                    }
+                    drawPath(
+                        path = path,
+                        color = barColor,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+                    )
+                    
+                    data.forEachIndexed { index, item ->
+                        if (item.isHighlight || item.isToday || item.tooltipText != null) {
+                            drawCircle(
+                                color = if (item.isHighlight) highlightColor else barColor,
+                                radius = 4.dp.toPx(),
+                                center = Offset(xPositions[index], yPositions[index])
+                            )
+                        }
+                    }
+                }
+            }
+
             data.forEachIndexed { index, item ->
                 val targetBarHeight = (item.value / maxValue) * canvasHeight
                 val barHeight = targetBarHeight * animationProgress.value
                 val left = yAxisWidth + index * (barWidth + barSpacing)
                 
-                // Draw background track
-                drawRoundRect(
-                    color = trackColor.copy(alpha = 0.5f),
-                    topLeft = Offset(left, 0f),
-                    size = Size(barWidth, canvasHeight),
-                    cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
-                )
+                if (chartStyle == ChartStyle.Bar) {
+                    // Draw background track
+                    if (!item.isEmpty) {
+                        drawRoundRect(
+                            color = trackColor.copy(alpha = 0.5f),
+                            topLeft = Offset(left, 0f),
+                            size = Size(barWidth, canvasHeight),
+                            cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
+                        )
+                    }
 
-                // Draw actual bar
-                val color = if (item.isHighlight) highlightColor else barColor
-                val barTop = canvasHeight - barHeight
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(left, barTop),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
-                )
-                
-                // Draw 'Today' outline
-                if (item.isToday) {
-                    drawRoundRect(
-                        color = onSurfaceColor,
-                        topLeft = Offset(left - 2.dp.toPx(), barTop - 2.dp.toPx()),
-                        size = Size(barWidth + 4.dp.toPx(), barHeight + 4.dp.toPx()),
-                        cornerRadius = CornerRadius((barWidth + 4.dp.toPx()) / 2.5f, (barWidth + 4.dp.toPx()) / 2.5f),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-                    )
+                    if (item.isEmpty) {
+                        drawRoundRect(
+                            color = gridColor,
+                            topLeft = Offset(left, 0f),
+                            size = Size(barWidth, canvasHeight),
+                            cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                width = 1.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                            )
+                        )
+                    } else {
+                        // Draw actual bar
+                        val color = if (item.isHighlight) highlightColor else barColor
+                        val barTop = canvasHeight - barHeight
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(left, barTop),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(barWidth / 2.5f, barWidth / 2.5f)
+                        )
+                    }
+                    
+                    // Draw 'Today' outline
+                    if (item.isToday) {
+                        val hlTop = if (item.isEmpty) 0f else canvasHeight - barHeight
+                        val hlHeight = if (item.isEmpty) canvasHeight else barHeight
+                        drawRoundRect(
+                            color = onSurfaceColor,
+                            topLeft = Offset(left - 2.dp.toPx(), hlTop - 2.dp.toPx()),
+                            size = Size(barWidth + 4.dp.toPx(), hlHeight + 4.dp.toPx()),
+                            cornerRadius = CornerRadius((barWidth + 4.dp.toPx()) / 2.5f, (barWidth + 4.dp.toPx()) / 2.5f),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                        )
+                    }
                 }
 
                 // X-axis label

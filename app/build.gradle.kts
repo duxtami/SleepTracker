@@ -18,11 +18,13 @@ android {
         versionName = "1.0.0"
 
         vectorDrawables.useSupportLibrary = true
+        resourceConfigurations.addAll(listOf("en"))
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {

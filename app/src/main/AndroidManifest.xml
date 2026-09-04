@@ -49,6 +49,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SleepTracker"
+        android:extractNativeLibs="false"
         android:enableOnBackInvokedCallback="true">
 
         <activity
