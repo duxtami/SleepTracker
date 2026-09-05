@@ -153,12 +153,7 @@ fun SleepOrb(
 
         Text(
             text = if (isActive) "Tap to end" else "Tap to sleep",
-            style = MaterialTheme.typography.titleMedium.copy(
-                shadow = androidx.compose.ui.graphics.Shadow(
-                    color = Color.White.copy(alpha = 0.5f),
-                    blurRadius = 12f
-                )
-            ),
+            style = MaterialTheme.typography.titleMedium,
             color = textColor
         )
     }

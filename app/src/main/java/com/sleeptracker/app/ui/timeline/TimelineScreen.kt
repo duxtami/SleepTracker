@@ -229,7 +229,7 @@ fun TimelineScreen(
                         }
                         OutlinedTextField(
                             value = state.searchQuery,
-                            onValueChange = viewModel::updateSearch,
+                            onValueChange = { viewModel.updateSearch(it) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester)
@@ -589,6 +589,7 @@ internal fun SessionEditorSheet(
     var delayUsed by remember(initial) { mutableStateOf(initial?.startDelayMinutesUsed ?: 0) }
     var totalPausedMillis by remember(initial) { mutableStateOf(initial?.totalPausedMillis ?: 0L) }
     var delayMenuExpanded by remember { mutableStateOf(false) }
+    var showCustomDelayDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     var sleepDetection by remember(initial) { mutableStateOf<BedtimeDetector.Result?>(null) }
@@ -750,7 +751,39 @@ internal fun SessionEditorSheet(
                             onClick = { delayUsed = minutes; delayMenuExpanded = false }
                         )
                     }
+                    DropdownMenuItem(
+                        text = { Text("Custom...") },
+                        onClick = { showCustomDelayDialog = true; delayMenuExpanded = false }
+                    )
                 }
+            }
+
+            if (showCustomDelayDialog) {
+                var customValue by remember { mutableStateOf(if (delayUsed == 0) "" else delayUsed.toString()) }
+                AlertDialog(
+                    onDismissRequest = { showCustomDelayDialog = false },
+                    title = { Text("Custom value") },
+                    text = {
+                        OutlinedTextField(
+                            value = customValue,
+                            onValueChange = { customValue = it.filter { char -> char.isDigit() } },
+                            label = { Text("Minutes") },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                            ),
+                            singleLine = true
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            customValue.toIntOrNull()?.let { delayUsed = it }
+                            showCustomDelayDialog = false
+                        }) { Text("OK") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showCustomDelayDialog = false }) { Text("Cancel") }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

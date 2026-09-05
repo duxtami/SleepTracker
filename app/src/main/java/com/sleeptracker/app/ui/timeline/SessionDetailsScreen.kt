@@ -159,7 +159,7 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
                     SectionHeader(title = "Timeline")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Your sleep states throughout the night. Dips indicate time spent awake.",
+                        "Your sleep states throughout the night.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -302,9 +302,8 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
     val durationMillis = (endEpochMillis - startEpochMillis).coerceAtLeast(1L)
     val textMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
     val barColor = MaterialTheme.colorScheme.primary
-    val awakeColor = MaterialTheme.colorScheme.error
 
     androidx.compose.foundation.layout.Box(
         modifier = Modifier
@@ -313,39 +312,49 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
             .padding(vertical = 8.dp)
     ) {
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-            val yAxisWidth = 44.dp.toPx()
+            val yAxisWidth = 48.dp.toPx()
             val canvasWidth = size.width
-            val canvasHeight = size.height - 24.dp.toPx() // Reserve space for X-axis labels
+            val canvasHeight = size.height - 24.dp.toPx()
             val chartLeft = yAxisWidth
             val chartWidth = canvasWidth - yAxisWidth
             
-            // Draw horizontal grid lines (0, 50%, 100%)
-            for (i in 0..2) {
-                val y = (i / 2f) * canvasHeight
-                drawLine(
-                    color = gridColor,
-                    start = androidx.compose.ui.geometry.Offset(yAxisWidth, y),
-                    end = androidx.compose.ui.geometry.Offset(canvasWidth, y),
-                    strokeWidth = 1.dp.toPx(),
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                )
-            }
+            val yAwake = canvasHeight * 0.15f
+            val yAsleep = canvasHeight * 0.85f
+
+            // Draw horizontal grid lines for the two states
+            drawLine(
+                color = gridColor,
+                start = androidx.compose.ui.geometry.Offset(chartLeft, yAwake),
+                end = androidx.compose.ui.geometry.Offset(canvasWidth, yAwake),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+            )
+            drawLine(
+                color = gridColor,
+                start = androidx.compose.ui.geometry.Offset(chartLeft, yAsleep),
+                end = androidx.compose.ui.geometry.Offset(canvasWidth, yAsleep),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+            )
 
             // Y-axis labels
-            val asleepLabel = textMeasurer.measure("Asleep", style = labelStyle)
             val awakeLabel = textMeasurer.measure("Awake", style = labelStyle)
-            drawText(
-                asleepLabel,
-                topLeft = androidx.compose.ui.geometry.Offset(chartLeft - asleepLabel.size.width - 8.dp.toPx(), 0f - asleepLabel.size.height / 2f)
-            )
+            val asleepLabel = textMeasurer.measure("Asleep", style = labelStyle)
             drawText(
                 awakeLabel,
-                topLeft = androidx.compose.ui.geometry.Offset(chartLeft - awakeLabel.size.width - 8.dp.toPx(), canvasHeight - awakeLabel.size.height / 2f)
+                topLeft = androidx.compose.ui.geometry.Offset(chartLeft - awakeLabel.size.width - 8.dp.toPx(), yAwake - awakeLabel.size.height / 2f)
+            )
+            drawText(
+                asleepLabel,
+                topLeft = androidx.compose.ui.geometry.Offset(chartLeft - asleepLabel.size.width - 8.dp.toPx(), yAsleep - asleepLabel.size.height / 2f)
             )
 
             val path = androidx.compose.ui.graphics.Path()
+            val linePath = androidx.compose.ui.graphics.Path()
+
             path.moveTo(chartLeft, canvasHeight)
-            path.lineTo(chartLeft, 0f)
+            path.lineTo(chartLeft, yAsleep)
+            linePath.moveTo(chartLeft, yAsleep)
             
             val sortedAwake = awakePeriods.sortedBy { it.first }
             sortedAwake.forEach { (awakeStart, awakeEnd) ->
@@ -354,47 +363,43 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
                 val startX = chartLeft + startOffset * chartWidth
                 val endX = chartLeft + endOffset * chartWidth
                 
-                path.lineTo(startX, 0f)
-                path.lineTo(startX, canvasHeight)
-                path.lineTo(endX, canvasHeight)
-                path.lineTo(endX, 0f)
+                path.lineTo(startX, yAsleep)
+                linePath.lineTo(startX, yAsleep)
+                
+                path.lineTo(startX, yAwake)
+                linePath.lineTo(startX, yAwake)
+                
+                path.lineTo(endX, yAwake)
+                linePath.lineTo(endX, yAwake)
+                
+                path.lineTo(endX, yAsleep)
+                linePath.lineTo(endX, yAsleep)
             }
-            path.lineTo(chartLeft + chartWidth, 0f)
+            path.lineTo(chartLeft + chartWidth, yAsleep)
+            linePath.lineTo(chartLeft + chartWidth, yAsleep)
+            
             path.lineTo(chartLeft + chartWidth, canvasHeight)
             path.close()
 
             drawPath(
                 path = path,
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(barColor.copy(alpha = 0.5f), androidx.compose.ui.graphics.Color.Transparent),
-                    startY = 0f,
+                    colors = listOf(barColor.copy(alpha = 0.3f), androidx.compose.ui.graphics.Color.Transparent),
+                    startY = yAwake,
                     endY = canvasHeight
                 )
             )
 
-            // Draw solid line on top of area
-            val linePath = androidx.compose.ui.graphics.Path()
-            linePath.moveTo(chartLeft, 0f)
-            sortedAwake.forEach { (awakeStart, awakeEnd) ->
-                val startOffset = ((awakeStart - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)
-                val endOffset = ((awakeEnd - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)
-                val startX = chartLeft + startOffset * chartWidth
-                val endX = chartLeft + endOffset * chartWidth
-                
-                linePath.lineTo(startX, 0f)
-                linePath.lineTo(startX, canvasHeight)
-                linePath.lineTo(endX, canvasHeight)
-                linePath.lineTo(endX, 0f)
-            }
-            linePath.lineTo(chartLeft + chartWidth, 0f)
-            
             drawPath(
                 path = linePath,
                 color = barColor,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 2.dp.toPx(),
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round
+                )
             )
 
-            // Draw X-axis labels
+            // X-axis labels
             val startText = TimeUtils.formatTime(startEpochMillis)
             val endText = TimeUtils.formatTime(endEpochMillis)
             
@@ -405,24 +410,10 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
                 textLayoutResult = startLayout,
                 topLeft = androidx.compose.ui.geometry.Offset(chartLeft, canvasHeight + 8.dp.toPx())
             )
-            
             drawText(
                 textLayoutResult = endLayout,
                 topLeft = androidx.compose.ui.geometry.Offset(canvasWidth - endLayout.size.width, canvasHeight + 8.dp.toPx())
             )
-            
-            // Optionally draw middle time if wide enough
-            val midMillis = startEpochMillis + (durationMillis / 2)
-            val midText = TimeUtils.formatTime(midMillis)
-            val midLayout = textMeasurer.measure(midText, style = labelStyle)
-            val midX = chartLeft + (chartWidth - midLayout.size.width) / 2f
-            
-            if (midX > chartLeft + startLayout.size.width + 16.dp.toPx() && midX + midLayout.size.width < canvasWidth - endLayout.size.width - 16.dp.toPx()) {
-                drawText(
-                    textLayoutResult = midLayout,
-                    topLeft = androidx.compose.ui.geometry.Offset(midX, canvasHeight + 8.dp.toPx())
-                )
-            }
         }
     }
 }

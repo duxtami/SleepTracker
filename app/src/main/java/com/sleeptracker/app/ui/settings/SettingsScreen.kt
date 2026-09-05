@@ -222,7 +222,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     Spacer(modifier = Modifier.height(16.dp))
                     RowSwitch(
                         title = "Use Application Font",
-                        subtitle = "Apply a custom typeface throughout the app",
+                        subtitle = "Use custom typeface.",
                         checked = settings.useApplicationFont,
                         onCheckedChange = viewModel::setUseApplicationFont
                     )
@@ -258,10 +258,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 ExpressiveCard {
                     SectionHeader(title = "Sleep Schedule")
                     Text(
-                        "Your default bedtime and wake-up time. This is used to automatically calculate your sleep goal across the app.",
+                        "Your default schedule. Used to calculate your sleep goal.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         TimeFieldButton(
@@ -318,10 +318,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         onSelect = viewModel::setStartDelayMinutes
                     )
                     Text(
-                        "Most people don't fall asleep the instant they press Start. Choose a delay and tracking will automatically begin once it elapses.",
+                        "Wait before tracking begins.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     SettingsDropdownPicker(
@@ -330,7 +330,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         onSelect = viewModel::setSmartAnalyzeThresholdMinutes
                     )
                     Text(
-                        "Automatically merges short wake-ups under this threshold into a single continuous sleep session.",
+                        "Ignore short wake-ups.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -345,7 +345,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     Spacer(modifier = Modifier.height(16.dp))
                     RowSwitch(
                         title = "Bedtime reminder",
-                        subtitle = "Get nudged when it's time to wind down",
+                        subtitle = "Nudge before winding down.",
                         checked = settings.bedtimeReminderEnabled,
                         onCheckedChange = { enabled -> viewModel.setBedtimeReminderEnabled(context, enabled) }
                     )
@@ -366,15 +366,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 ExpressiveCard {
                     SectionHeader(title = "Awake since wake-up")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "Show the time elapsed since your last wake-up on the Home screen.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
                     RowSwitch(
-                        title = "Awake since wake-up",
-                        subtitle = "Shown on the Home screen only",
+                        title = "Show time awake on the Home screen.",
+                        subtitle = "Home screen only.",
                         checked = settings.showAwakeDuration,
                         onCheckedChange = viewModel::setShowAwakeDuration
                     )
@@ -416,8 +410,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     SectionHeader(title = "About")
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Use the exact official launcher/splash logo asset as-is:
-                        // no circular container, no clip, no border, no extra padding.
                         Image(
                             painter = painterResource(id = R.drawable.ic_splash_logo),
                             contentDescription = "SleepTracker logo",
@@ -432,7 +424,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "SleepTracker is fully offline-first. Your sleep data never leaves this device unless you explicitly export it.",
+                        "SleepTracker is offline-first. Your data stays on your device.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -478,7 +470,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     SectionHeader(title = "Advanced")
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Permanently delete every sleep session stored on this device. This cannot be undone.",
+                        "Delete all sleep data permanently. Cannot be undone.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -533,6 +525,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 @Composable
 private fun SettingsDropdownPicker(label: String, selectedMinutes: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var showCustomDialog by remember { mutableStateOf(false) }
     Box {
         Column(modifier = Modifier.fillMaxWidth().clickable { expanded = true }) {
             Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -550,16 +543,42 @@ private fun SettingsDropdownPicker(label: String, selectedMinutes: Int, onSelect
                     onClick = { onSelect(minutes); expanded = false }
                 )
             }
+            DropdownMenuItem(
+                text = { Text("Custom...") },
+                onClick = { showCustomDialog = true; expanded = false }
+            )
         }
+    }
+
+    if (showCustomDialog) {
+        var customValue by remember { mutableStateOf(if (selectedMinutes == 0) "" else selectedMinutes.toString()) }
+        AlertDialog(
+            onDismissRequest = { showCustomDialog = false },
+            title = { Text("Custom value") },
+            text = {
+                OutlinedTextField(
+                    value = customValue,
+                    onValueChange = { customValue = it.filter { char -> char.isDigit() } },
+                    label = { Text("Minutes") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                    ),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    customValue.toIntOrNull()?.let { onSelect(it) }
+                    showCustomDialog = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
-/**
- * Expandable card that surfaces the real Google Sans Flex variation axes (weight, width,
- * roundness) as Material sliders. Collapsed by default so the Appearance section doesn't feel
- * overwhelming, but the header itself is one tap to open - matching the same collapse/expand
- * affordance Timeline's month headers already use elsewhere in the app.
- */
 @Composable
 private fun GoogleSansFlexCustomizationCard(
     weightAxis: Float,
@@ -584,11 +603,6 @@ private fun GoogleSansFlexCustomizationCard(
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.large)
                 .clickable(onClickLabel = if (expanded) "Collapse" else "Expand") { expanded = !expanded }
-                // The clip above uses shapes.large - a 28dp corner radius - and clickable's
-                // ripple fills right out to that clipped edge, which is exactly why it needs to
-                // come *after* clip+clickable rather than before: this inset is what keeps the
-                // header's own text and icon clear of that rounded corner and the card's edges,
-                // while the ripple itself still spans the full row.
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -600,7 +614,7 @@ private fun GoogleSansFlexCustomizationCard(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Fine-tune weight, width, and roundness across the whole app",
+                    "Adjust font weight, width, and roundness.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)

@@ -256,16 +256,16 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                         Spacer(modifier = Modifier.height(12.dp))
                         if (state.settings.showAwakeDuration) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                StatCard(label = "Duration", value = TimeUtils.formatDurationShort(last.durationMillis), modifier = Modifier.weight(1f))
                                 StatCard(label = "Bedtime", value = TimeUtils.formatTime(last.startEpochMillis), modifier = Modifier.weight(1f))
-                            }
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                 StatCard(
                                     label = "Wake up",
                                     value = last.endEpochMillis?.let { TimeUtils.formatTime(it) } ?: "—",
                                     modifier = Modifier.weight(1f)
                                 )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                StatCard(label = "Duration", value = TimeUtils.formatDurationShort(last.durationMillis), modifier = Modifier.weight(1f))
                                 StatCard(
                                     label = "Awake for",
                                     value = state.awakeSinceWakeMillis?.let { TimeUtils.formatDurationShort(it) } ?: "—",
@@ -274,13 +274,13 @@ fun SleepScreen(viewModel: SleepViewModel, modifier: Modifier = Modifier) {
                             }
                         } else {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                StatCard(label = "Duration", value = TimeUtils.formatDurationShort(last.durationMillis), modifier = Modifier.weight(1f))
                                 StatCard(label = "Bedtime", value = TimeUtils.formatTime(last.startEpochMillis), modifier = Modifier.weight(1f))
                                 StatCard(
                                     label = "Wake up",
                                     value = last.endEpochMillis?.let { TimeUtils.formatTime(it) } ?: "—",
                                     modifier = Modifier.weight(1f)
                                 )
+                                StatCard(label = "Duration", value = TimeUtils.formatDurationShort(last.durationMillis), modifier = Modifier.weight(1f))
                             }
                         }
                     }

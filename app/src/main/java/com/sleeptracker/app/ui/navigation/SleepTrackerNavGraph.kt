@@ -88,11 +88,7 @@ fun SleepTrackerNavGraph(container: AppContainer) {
             NavHost(
                 navController = navController,
                 startDestination = Destination.SLEEP.route,
-                modifier = Modifier.fillMaxSize(),
-                enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.9f) },
-                exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)) },
-                popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) },
-                popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.85f) }
+                modifier = Modifier.fillMaxSize()
             ) {
                 composable(Destination.SLEEP.route) {
                     val vm: SleepViewModel = viewModel(
