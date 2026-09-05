@@ -33,16 +33,20 @@ class TimelineViewModel(
 
     val uiState: StateFlow<TimelineUiState> = combine(
         repository.observeAllSessions(),
+        repository.observeAllNotes(),
         _searchQuery,
         settingsRepository.settingsFlow
-    ) { sessions, query, settings ->
+    ) { sessions, allNotes, query, settings ->
         val completedOnly = sessions.filter { !it.isActive }
+        val notesBySession = allNotes.groupBy { it.sessionId }
         val filtered = if (query.isBlank()) {
             completedOnly
         } else {
             completedOnly.filter { s ->
                 val dateStr = TimeUtils.formatDate(s.startEpochMillis)
+                val sessionNotes = notesBySession[s.id]?.joinToString(" ") { it.text } ?: ""
                 s.notes.contains(query, ignoreCase = true) ||
+                    sessionNotes.contains(query, ignoreCase = true) ||
                     s.tags.any { it.contains(query, ignoreCase = true) } ||
                     (s.mood?.label?.contains(query, ignoreCase = true) == true) ||
                     dateStr.contains(query, ignoreCase = true)

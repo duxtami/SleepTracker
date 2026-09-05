@@ -97,8 +97,13 @@ class SleepViewModel(
             )
             else -> TrackingPhase.Idle
         }
-        val debt = last?.let {
-            (settings.sleepGoalMinutes - (it.durationMillis / 60000).toInt()).coerceAtLeast(0)
+        val debt = last?.let { lastSession ->
+            val lastEndDateStr = com.sleeptracker.app.util.TimeUtils.formatDate(lastSession.endEpochMillis ?: lastSession.startEpochMillis)
+            val totalSleepMillis = sessions
+                .filter { it.endEpochMillis != null }
+                .filter { com.sleeptracker.app.util.TimeUtils.formatDate(it.endEpochMillis!!) == lastEndDateStr }
+                .sumOf { it.durationMillis }
+            (settings.sleepGoalMinutes - (totalSleepMillis / 60000).toInt()).coerceAtLeast(0)
         } ?: 0
 
         SleepUiState(

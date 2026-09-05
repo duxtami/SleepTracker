@@ -149,6 +149,8 @@ class SleepRepository(
 
     fun observeNotesForSession(sessionId: Long): Flow<List<NoteEntity>> = noteDao.observeForSession(sessionId)
 
+    fun observeAllNotes(): Flow<List<NoteEntity>> = noteDao.observeAll()
+
     suspend fun clearAllData() {
         sessionDao.deleteAll()
     }

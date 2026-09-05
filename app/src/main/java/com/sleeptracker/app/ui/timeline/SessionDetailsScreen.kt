@@ -159,7 +159,7 @@ fun SessionDetailsScreen(viewModel: SessionDetailsViewModel, onBack: () -> Unit,
                     SectionHeader(title = "Timeline")
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Your sleep states throughout the night.",
+                        "Your sleep states.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -356,7 +356,7 @@ private fun NightTimelineBar(startEpochMillis: Long, endEpochMillis: Long, awake
             path.lineTo(chartLeft, yAsleep)
             linePath.moveTo(chartLeft, yAsleep)
             
-            val sortedAwake = awakePeriods.sortedBy { it.first }
+            val sortedAwake = awakePeriods.sortedBy { it.first }.filterNot { it.second >= endEpochMillis - 30000L }
             sortedAwake.forEach { (awakeStart, awakeEnd) ->
                 val startOffset = ((awakeStart - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)
                 val endOffset = ((awakeEnd - startEpochMillis).toFloat() / durationMillis).coerceIn(0f, 1f)

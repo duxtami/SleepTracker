@@ -183,7 +183,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     Spacer(modifier = Modifier.height(16.dp))
                     RowSwitch(
                         title = "Dynamic color",
-                        subtitle = "Match your wallpaper's accent color - applies instantly",
+                        subtitle = "Match your wallpaper's accent color.",
                         checked = settings.dynamicColor,
                         onCheckedChange = viewModel::setDynamicColor
                     )
@@ -260,7 +260,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 ExpressiveCard {
                     SectionHeader(title = "Sleep Schedule")
                     Text(
-                        "Your default schedule. Used to calculate your sleep goal.",
+                        "Sets your sleep goal.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -320,7 +320,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         onSelect = viewModel::setStartDelayMinutes
                     )
                     Text(
-                        "Wait before tracking begins.",
+                        "Wait before tracking.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -369,7 +369,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     SectionHeader(title = "Awake since wake-up")
                     Spacer(modifier = Modifier.height(8.dp))
                     RowSwitch(
-                        title = "Show time awake on the Home screen.",
+                        title = "Show time awake on Home screen.",
                         subtitle = "Home screen only.",
                         checked = settings.showAwakeDuration,
                         onCheckedChange = viewModel::setShowAwakeDuration
@@ -426,7 +426,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "SleepTracker is offline-first. Your data stays on your device.",
+                        "Data stays on your device.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -472,7 +472,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     SectionHeader(title = "Advanced")
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Delete all sleep data permanently. Cannot be undone.",
+                        "Delete all sleep data permanently.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -510,7 +510,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
             },
             onDismissRequest = { showClearDataConfirm = false },
             title = { Text("Clear all sleep data?") },
-            text = { Text("Every recorded sleep session will be permanently deleted. This cannot be undone.") },
+            text = { Text("Every recorded sleep session will be permanently deleted.") },
             confirmButton = {
                 TextButton(onClick = {
                     showClearDataConfirm = false
