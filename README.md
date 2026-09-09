@@ -25,10 +25,7 @@ By combining robust technical foundations with a carefully crafted user interfac
 ## Screenshots
 
 <p align="center">
-  <img src="Screenshot/Screenshot_20260909-142344.png" width="24%" alt="Home"/>
-  <img src="Screenshot/Screenshot_20260909-142358.png" width="24%" alt="Timeline"/>
-  <img src="Screenshot/Screenshot_20260909-142402.png" width="24%" alt="Insights"/>
-  <img src="Screenshot/Screenshot_20260909-142417.png" width="24%" alt="Settings"/>
+<img src="Screenshot/Screenshot_20260909-142344.png" width="25%" alt="Home"/><img src="Screenshot/Screenshot_20260909-142358.png" width="25%" alt="Timeline"/><img src="Screenshot/Screenshot_20260909-142402.png" width="25%" alt="Insights"/><img src="Screenshot/Screenshot_20260909-142417.png" width="25%" alt="Settings"/>
 </p>
 
 ## Material 3 Expressive
