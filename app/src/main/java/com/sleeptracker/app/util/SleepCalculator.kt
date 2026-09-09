@@ -105,13 +105,13 @@ object SleepCalculator {
 
     private fun currentStreakDays(done: List<SleepSession>): Int {
         if (done.isEmpty()) return 0
-        val uniqueDays = done.map { it.startInstant.atZone(it.zone).toLocalDate() }
+        val uniqueDays = done.map { it.startInstant.atZone(it.zone).minusHours(12).toLocalDate() }
             .distinct()
             .sortedDescending()
             
         if (uniqueDays.isEmpty()) return 0
         
-        val today = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+        val today = java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault()).minusHours(12).toLocalDate()
         
         if (uniqueDays.first().isBefore(today.minusDays(1))) {
             return 0
@@ -135,7 +135,7 @@ object SleepCalculator {
     fun dailyTotals(sessions: List<SleepSession>): Map<String, Long> {
         val done = completed(sessions)
         return done.groupBy { s ->
-            val d = s.startInstant.atZone(s.zone).toLocalDate()
+            val d = s.startInstant.atZone(s.zone).minusHours(12).toLocalDate()
             d.toString()
         }.mapValues { (_, list) -> list.sumOf { it.durationMillis } }
     }
