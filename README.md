@@ -27,6 +27,7 @@ By combining robust technical foundations with a carefully crafted user interfac
 <p align="center">
 <img src="Screenshot/Screenshot_20260909-142344.png" width="25%" alt="Home"/><img src="Screenshot/Screenshot_20260909-142358.png" width="25%" alt="Timeline"/><img src="Screenshot/Screenshot_20260909-142402.png" width="25%" alt="Insights"/><img src="Screenshot/Screenshot_20260909-142417.png" width="25%" alt="Settings"/>
 </p>
+https://count.getloli.com/@my%20little%20tami?theme=asoul&padding=7&offset=0&align=top&scale=1&pixelated=1&darkmode=auto
 
 ## Material 3 Expressive
 
