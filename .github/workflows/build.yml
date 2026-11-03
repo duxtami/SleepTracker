@@ -5,10 +5,11 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build and Sign APK
+    name: Build and Sign APK & AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -25,12 +26,13 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Release APK and AAB
+        run: ./gradlew assembleRelease bundleRelease
 
       - name: Sign Release APK
+        if: ${{ secrets.SIGNING_KEY != '' }}
         uses: r0adkll/sign-android-release@v1
-        id: sign_app
+        id: sign_apk
         env:
           BUILD_TOOLS_VERSION: '34.0.0'
         with:
@@ -40,8 +42,43 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Sign Release AAB (Android App Bundle)
+        if: ${{ secrets.SIGNING_KEY != '' }}
+        uses: r0adkll/sign-android-release@v1
+        id: sign_aab
+        env:
+          BUILD_TOOLS_VERSION: '34.0.0'
+        with:
+          releaseDirectory: app/build/outputs/bundle/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
       - name: Upload Signed APK
+        if: steps.sign_apk.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-signed
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          name: app-release-signed-apk
+          path: ${{ steps.sign_apk.outputs.signedReleaseFile }}
+
+      - name: Upload Signed AAB
+        if: steps.sign_aab.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed-aab
+          path: ${{ steps.sign_aab.outputs.signedReleaseFile }}
+
+      - name: Upload Unsigned APK (Fallback)
+        if: steps.sign_apk.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-apk
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Upload Unsigned AAB (Fallback)
+        if: steps.sign_aab.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-aab
+          path: app/build/outputs/bundle/release/*.aab
